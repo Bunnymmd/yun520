@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Masks & Management</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="./wechat_masks.css">
+  <script>window.__MINI_ROUTE__ = "wechat_masks";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="../core/png_card.js"></script>
+  <script defer src="./wechat_masks.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="page-container active" id="view-list">
+    <div class="nav-header">
+        <div class="nav-left">
+            <svg class="icon-svg" viewBox="0 0 24 24" onclick="console.log('Return to Desktop')"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </div>
+        <div class="nav-title" onclick="console.log('Return to Desktop')">MASKS & MANAGEMENT</div>
+        <div class="nav-right">
+            <svg class="icon-svg" viewBox="0 0 24 24" onclick="toggleMenu(event)"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <div id="dropdown-menu" class="dropdown-menu">
+                <div class="dropdown-item" onclick="openEditor(); closeMenu();">添加 (Add)</div>
+                <div class="dropdown-item" onclick="document.getElementById('inp-import').click(); closeMenu();">导入 (JSON/PNG)</div>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="inp-import" class="hidden-input" accept=".json, .png" onchange="importData(event)">
+
+    <div class="list-scroll" id="mask-list-container"></div>
+</div>
+
+<div class="page-container" id="view-editor">
+    <div class="nav-header">
+        <div class="nav-left"><svg class="icon-svg" viewBox="0 0 24 24" onclick="closeEditor()"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
+        <div class="nav-title" id="editor-title" onclick="closeEditor()">NEW MASK</div>
+        <div class="nav-right"></div>
+    </div>
+    
+    <div class="editor-scroll">
+        <div class="capture-area" id="capture-area">
+            <div class="flat-badge">
+                <div class="badge-hole"></div>
+                
+                <div class="badge-top-row">
+                    <div class="badge-avatar" id="badge-avatar" onclick="document.getElementById('inp-avatar').click()"></div>
+                    <div class="badge-info">
+                        <div class="badge-info-row">
+                            <span class="badge-label">昵称：</span>
+                            <span class="badge-value" id="badge-nickname">Nickname</span>
+                        </div>
+                        <div class="badge-info-row">
+                            <span class="badge-label">姓名：</span>
+                            <span class="badge-value" id="badge-name">Name</span>
+                        </div>
+                        <div class="badge-info-row">
+                            <span class="badge-label">性别：</span>
+                            <span class="badge-value" id="badge-gender">Secret</span>
+                        </div>
+                        <div class="badge-info-row">
+                            <span class="badge-label">账号：</span>
+                            <span class="badge-value" id="badge-account">Account</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="badge-divider"></div>
+                
+                <div class="badge-info-row" style="width: 100%; margin-bottom: 8px;">
+                    <span class="badge-label">签名：</span>
+                    <span class="badge-value badge-sign-text" id="badge-sign">The signature will appear here...</span>
+                </div>
+                
+                <div class="badge-lore" id="badge-lore">The detailed lore or setting for this mask.</div>
+            </div>
+        </div>
+
+        <input type="file" id="inp-avatar" class="hidden-input" accept="image/*">
+        <input type="hidden" id="val-avatar" value="">
+
+        <div class="form-section">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Nickname (昵称)</label>
+                    <input type="text" id="inp-nickname" class="flat-input" placeholder="Display name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Name (姓名)</label>
+                    <input type="text" id="inp-name" class="flat-input" placeholder="Real/Role name">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1.5;">
+                    <label class="form-label">Account (@账号)</label>
+                    <input type="text" id="inp-account" class="flat-input" placeholder="unique_id">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Gender (性别)</label>
+                    <div class="tab-group">
+                        <div class="tab-btn active" onclick="setGender('M', this)">M</div>
+                        <div class="tab-btn" onclick="setGender('F', this)">F</div>
+                        <div class="tab-btn" onclick="setGender('X', this)">X</div>
+                    </div>
+                    <input type="hidden" id="inp-gender" value="M">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Signature (个性签名)</label>
+                <input type="text" id="inp-sign" class="flat-input" placeholder="A short quote...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Lore / Setting (设定内容)</label>
+                <textarea id="inp-lore" class="flat-textarea" placeholder="Detailed background story..."></textarea>
+            </div>
+        </div>
+
+        <div class="action-group">
+            <button class="btn-flat btn-primary" onclick="saveMask()">SAVE MASK</button>
+            <div class="btn-row" id="edit-actions" style="display: none;">
+                <button class="btn-flat btn-secondary" onclick="exportPNG()" style="flex: 1;">PNG</button>
+                <button class="btn-flat btn-secondary" onclick="exportJSON()" style="flex: 1;">JSON</button>
+                <button class="btn-flat btn-danger" onclick="deleteMask()" style="flex: 1;">DEL</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

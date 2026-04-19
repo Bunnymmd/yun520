@@ -1,0 +1,325 @@
+/* 核心基调：无衬线字体，高级暖灰白底色，绝对扁平 */
+    :root {
+        --bg-color: #F7F6F3;
+        --card-bg: #FFFFFF;
+        --text-main: #1C1C1C;
+        --text-sub: #8E8E8D;
+        --accent-dark: #2B2B2B;
+        --border-light: rgba(0, 0, 0, 0.05);
+        --tag-bg: #F0EFEA;
+    }
+
+    html, body {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: fixed;
+        background-color: var(--bg-color);
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text-main);
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    ::-webkit-scrollbar { display: none; }
+
+    /* 横向滑动容器 */
+    .screen-container { 
+        display: flex; 
+        width: 100vw; 
+        height: calc(100vh - 80px);
+        overflow-x: auto; 
+        overflow-y: hidden; 
+        scroll-snap-type: x mandatory;
+        flex-shrink: 0;
+    }
+    
+    .page { 
+        min-width: 100vw; 
+        height: 100%; 
+        scroll-snap-align: start; 
+        scroll-snap-stop: always; 
+        display: flex; 
+        flex-direction: column; 
+        overflow-y: auto; 
+        overflow-x: hidden;
+        padding-bottom: 40px;
+    }
+
+    .page-header {
+        position: sticky;
+        top: 0;
+        background: var(--bg-color);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 60px;
+        flex-shrink: 0;
+        padding: 0 24px;
+    }
+    .page-title {
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+    .header-actions {
+        position: absolute;
+        right: 24px;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+    }
+    .icon-btn {
+        width: 20px;
+        height: 20px;
+        fill: var(--text-main);
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    .icon-btn:active { opacity: 0.5; }
+
+    /* === 首页区域 === */
+    .search-row {
+        padding: 4px 20px 16px;
+    }
+    .search-box-wrap {
+        display: flex;
+        align-items: center;
+        background: var(--card-bg);
+        border: 1px solid var(--border-light);
+        border-radius: 14px;
+        height: 44px;
+        padding: 0 16px;
+        gap: 12px;
+    }
+    .search-box-wrap svg { width: 16px; height: 16px; fill: var(--text-sub); }
+    .search-box {
+        flex: 1;
+        background: transparent;
+        border: none;
+        font-size: 14px;
+        outline: none;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+    .search-box::placeholder { color: #C4C4C4; font-weight: 400; }
+    
+    .tag-row {
+        display: flex;
+        padding: 0 20px 20px;
+        gap: 10px;
+        overflow-x: auto;
+        flex-shrink: 0;
+    }
+    .tag-capsule {
+        background: var(--card-bg);
+        border: 1px solid var(--border-light);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-sub);
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+    .tag-capsule.active {
+        background: var(--accent-dark);
+        color: #FFF;
+        border-color: var(--accent-dark);
+    }
+    .tag-add { font-size: 16px; line-height: 12px; padding: 8px 14px; }
+
+    .book-list { display: flex; flex-direction: column; padding: 0 20px; gap: 20px; }
+    .book-list-item { 
+        display: flex; 
+        gap: 16px; 
+        background: var(--card-bg); 
+        padding: 16px; 
+        border-radius: 20px;
+        border: 1px solid var(--border-light);
+    }
+    
+    /* === 书封核心重构 === */
+    .book-cover {
+        width: 72px;
+        height: 100px;
+        background-color: #E8E6DF; /* 莫兰迪低饱和色 */
+        border-radius: 8px;
+        flex-shrink: 0;
+        overflow: hidden;
+        position: relative;
+    }
+    .cover-c1 { background-color: #E0E3E1; }
+    .cover-c2 { background-color: #E6DFDF; }
+    .cover-c3 { background-color: #DCDDE0; }
+
+    /* 书架页专属覆写：百分比 Padding 暴力锁死比例 */
+    .shelf-item .book-cover { 
+        width: 100%; 
+        height: 0 !important; /* 高度设为 0 */
+        padding-bottom: 133.33% !important; /* 4:3 比例的魔法数字。无视内核版本，死死焊住高度 */
+        border-radius: 12px; 
+    }
+
+    /* 书封文字：绝对定位填满整个容器，使用 flex 居中 */
+    .book-cover-text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        box-sizing: border-box;
+        color: rgba(0,0,0,0.6);
+        font-size: 10px;
+        line-height: 1.4;
+        text-align: center;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        word-break: break-all;
+    }
+
+    .book-list-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; justify-content: flex-start; }
+    .b-title { font-size: 16px; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .b-author { font-size: 12px; font-weight: 500; color: var(--text-sub); margin-bottom: 4px; }
+    .b-chapter { font-size: 11px; font-weight: 500; color: #A0A09F; margin-bottom: auto; }
+    .b-type-wrap { display: flex; margin-top: 10px; }
+    .b-type { font-size: 10px; background: var(--tag-bg); padding: 4px 10px; border-radius: 6px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* === 书架区域 === */
+    .bookshelf-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px 16px;
+        padding: 10px 20px;
+    }
+    .shelf-item { display: flex; flex-direction: column; width: 100%; }
+    .shelf-item .book-cover { width: 100%; aspect-ratio: 3/4; height: auto; border-radius: 12px; }
+    .shelf-title { font-size: 13px; font-weight: 700; margin-top: 12px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.5px; }
+    .shelf-prog { font-size: 11px; color: var(--text-sub); font-weight: 500; margin-top: 4px; }
+    
+    /* === 个人区域 === */
+    .profile-card {
+        margin: 0 20px 24px;
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-light);
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        cursor: pointer;
+    }
+    .prof-avatar {
+        width: 72px;
+        height: 72px;
+        background: var(--tag-bg);
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-sub);
+        font-size: 11px;
+        font-weight: 600;
+        background-size: cover;
+        background-position: center;
+        overflow: hidden;
+    }
+    .prof-info { flex: 1; overflow: hidden; }
+    .prof-name { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; letter-spacing: 1px; }
+    .prof-id { font-size: 12px; font-weight: 500; color: var(--text-sub); font-family: monospace; letter-spacing: 0.5px; }
+
+    /* 统计区域：移除 gap 换成 margin-bottom 防黏连 */
+    .stats-container { display: flex; flex-direction: column; padding: 0 20px 20px; }
+    .stats-row {
+        display: flex;
+        background: var(--card-bg);
+        border: 1px solid var(--border-light);
+        border-radius: 20px;
+        padding: 20px 0;
+        justify-content: space-around;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .stats-row:last-child {
+        margin-bottom: 0;
+    }
+    .stat-item { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 33.33%; position: relative; }
+    .stat-item:not(:last-child)::after {
+        content: ''; position: absolute; right: 0; top: 10%; height: 80%; width: 1px; background: var(--border-light);
+    }
+    .stat-val { font-size: 17px; font-weight: 800; color: var(--text-main); }
+    .stat-label { font-size: 11px; color: var(--text-sub); font-weight: 600; letter-spacing: 0.5px; }
+    .val-highlight { color: #8C7A6B; }
+
+    /* === 底部 Dock === */
+    .dock {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 80px;
+        background: var(--card-bg);
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;
+        padding-top: 16px;
+        z-index: 100;
+        padding-bottom: env(safe-area-inset-bottom);
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.02);
+    }
+    .dock-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        width: 60px;
+    }
+    .dock-icon { width: 24px; height: 24px; fill: #D1D1D1; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .dock-text { font-size: 10px; font-weight: 700; color: #D1D1D1; transition: all 0.3s; letter-spacing: 0.5px; }
+    
+    .dock-btn.active .dock-icon { fill: var(--text-main); transform: translateY(-2px); }
+    .dock-btn.active .dock-text { color: var(--text-main); }
+
+    /* === 弹窗设计 === */
+    .ins-modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(250, 249, 248, 0.95); 
+        display: none; justify-content: center; align-items: center; z-index: 9999;
+    }
+    .ins-modal {
+        background: #fff; border: 1px solid rgba(0, 0, 0, 0.04); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+        border-radius: 24px; padding: 30px 25px; width: 85%; max-width: 320px;
+        display: flex; flex-direction: column; gap: 15px; margin: auto;
+    }
+    .ins-modal-title { 
+        text-align: center; font-size: 16px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; color: #111;
+    }
+    .ins-input {
+        width: 100%; padding: 14px 16px; border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.04); background: #fff;
+        outline: none; font-size: 14px; color: #111; font-weight: 600;
+        transition: border-color 0.2s, box-shadow 0.2s; appearance: none;
+    }
+    .ins-input:focus { border-color: #1a1a1a; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+    .ins-file-upload { display: block; padding: 16px; border-radius: 14px; background: var(--bg-color); text-align: center; font-size: 13px; cursor: pointer; color: var(--text-sub); font-weight: 700; border: 1px dashed #D1D1D1; letter-spacing: 0.5px;}
+    .ins-file-upload input[type="file"] { display: none; }
+    .ins-modal-actions { display: flex; gap: 12px; margin-top: 6px; }
+    .ins-modal-actions button { 
+        flex: 1; padding: 16px; border-radius: 16px; border: none;
+        font-size: 14px; font-weight: 800; cursor: pointer; transition: transform 0.1s; letter-spacing: 1px;
+    }
+    .ins-modal-actions button:active { transform: scale(0.97); }
+    .ins-btn-cancel { background: #fff; color: #111; border: 1px solid rgba(0,0,0,0.05); }
+    .ins-btn-save { background: #1a1a1a; color: #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }

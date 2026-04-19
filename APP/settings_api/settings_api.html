@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>API & CONFIG</title>
+  <link rel="stylesheet" href="./settings_api.css">
+  <script>window.__MINI_ROUTE__ = "settings_api";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./settings_api.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="toast-banner" id="toast">NOTICE</div>
+
+<div class="nav-bar">
+    <div class="nav-title" onclick="history.back()">API & CONFIG</div>
+</div>
+
+<div class="settings-container">
+    <div class="card">
+        <div class="preset-header">
+            <div class="preset-title" onclick="toggleCollapse('chat-body')" style="cursor:pointer;">
+                CHAT PRESET
+                <svg id="chat-chevron" style="width:16px;height:16px;fill:#1a1a1a;transition:transform 0.3s;" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+            </div>
+            <div class="preset-actions">
+                <div class="icon-btn" onclick="showToast('NEW PRESET SAVED')">
+                    <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                </div>
+                <div class="icon-btn" onclick="showToast('PRESET REMOVED')">
+                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="collapsible-body" id="chat-body">
+            <div class="form-group">
+                <div class="form-label">PROVIDER & BASE URL</div>
+                <div class="input-wrap" style="margin-bottom: 8px;">
+                    <select id="api-provider" onchange="autoFillUrl()">
+                        <option value="openai">OpenAI</option>
+                        <option value="claude">Anthropic Claude</option>
+                        <option value="qwen">QWEN / DASHSCOPE</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="doubao">DOUBAO / ARK</option>
+                        <option value="kimi">Kimi / Moonshot</option>
+                        <option value="llama">LLAMA / OPENAI COMPATIBLE</option>
+                        <option value="newapi">New API / One API</option>
+                    </select>
+                    <div class="input-action"><svg style="width:14px;height:14px;fill:#aaa;" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></div>
+                </div>
+                <div class="input-wrap">
+                    <input type="text" id="api-url" value="https://api.openai.com/v1" placeholder="ENTER BASE URL. FETCH WILL AUTO-APPEND ENDPOINTS">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-label">API Key</div>
+                <div class="input-wrap">
+                    <input type="password" id="chat-apikey" placeholder="sk-...">
+                    <div class="input-action">
+                        <svg id="chat-eye" class="icon-line" onclick="togglePwd('chat-apikey', 'chat-eye')" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group"><div class="form-label">MODEL</div><div class="input-wrap"><input type="text" id="chat-model" placeholder="FETCH OR ENTER A MODEL ID MANUALLY" autocomplete="off"><div class="input-action"><button type="button" class="line-action" onclick="fetchChatModels(event)"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>FETCH</button></div><div id="chat-model-list" class="custom-dropdown"></div></div><div class="form-hint">EDIT MODEL HERE ONLY. FETCH WILL AUTO-APPEND THE CHAT ENDPOINT.</div></div>
+
+            <div class="form-group">
+                <div class="form-label"><span>CONTEXT WINDOW</span> <span id="ctx-val" style="color:#1a1a1a;">20 TURNS</span></div>
+                <div class="input-wrap">
+                    <input type="number" id="ctx-input" min="0" value="20" placeholder="ENTER CONTEXT TURNS. USE 0 FOR UNLIMITED." oninput="updateCtx(this.value)">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-label"><span>TEMPERATURE</span> <span id="temp-val" style="color:#1a1a1a;">0.7</span></div>
+                <div class="slider-wrap">
+                    <input type="range" min="0" max="2" step="0.1" value="0.7" oninput="document.getElementById('temp-val').innerText = this.value">
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="saveChatConfig()">SAVE CHAT CONFIG</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="preset-header">
+            <div class="preset-title" onclick="toggleCollapse('voice-body')" style="cursor:pointer;">
+                VOICE PRESET
+                <svg id="voice-chevron" style="width:16px;height:16px;fill:#1a1a1a;transition:transform 0.3s;" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+            </div>
+            <div class="preset-actions">
+                <div class="icon-btn" onclick="showToast('VOICE PRESET SAVED')"><svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg></div>
+                <div class="icon-btn" onclick="showToast('VOICE PRESET REMOVED')"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+            </div>
+        </div>
+
+        <div class="collapsible-body" id="voice-body">
+            <div class="form-group"><div class="form-label">ENDPOINT REGION</div><div class="radio-group"><div class="radio-pill active" onclick="selectEnv(this, 'official')">OFFICIAL</div><div class="radio-pill" onclick="selectEnv(this, 'uw')">LOW LATENCY</div></div></div><div class="form-group"><div class="form-label">VOICE ENDPOINT</div><div class="input-wrap"><input type="text" id="voice-url" value="https://api.minimax.io/v1/t2a_v2" placeholder="https://api.minimax.io/v1/t2a_v2"></div><div class="form-hint">MINIMAX T2A HTTP: OFFICIAL /V1/T2A_V2. LOW-LATENCY HOST API-UW.MINIMAX.IO.</div></div>
+
+            <div class="form-group">
+                <div class="form-label">API Key</div>
+                <div class="input-wrap">
+                    <input type="password" id="voice-apikey" placeholder="sk-...">
+                    <div class="input-action">
+                        <svg id="voice-eye" class="icon-line" onclick="togglePwd('voice-apikey', 'voice-eye')" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group"><div class="form-label">GROUP ID (LEGACY OPTIONAL)</div><div class="input-wrap"><input type="text" id="voice-group-id" placeholder="FILL ONLY IF YOUR LEGACY ACCOUNT NEEDS IT"></div></div>
+
+            <div class="form-group"><div class="form-label">VOICE MODEL</div><div class="input-wrap"><input type="text" id="voice-tts-model" value="speech-2.8-hd" placeholder="speech-2.8-hd"></div></div><div class="form-group"><div class="form-label">VOICE ID</div><div class="input-wrap"><input type="text" id="voice-id" placeholder="ENTER A MINIMAX VOICE_ID, FOR EXAMPLE male-qn-qingse" autocomplete="off"></div><div class="form-hint">VOICE CONFIG USES MANUAL INPUT ONLY. NO VOICE ID FETCH.</div></div>
+
+            <div class="form-group">
+                <div class="form-label">LANGUAGE</div>
+                <div class="input-wrap">
+                    <select id="voice-language">
+                        <option value="Chinese">MANDARIN CHINESE</option>
+                        <option value="Chinese,Yue">CANTONESE CHINESE</option>
+                        <option value="English">ENGLISH</option>
+                        <option value="Japanese">JAPANESE</option>
+                        <option value="Korean">KOREAN</option>
+                        <option value="French">FRENCH</option>
+                        <option value="German">GERMAN</option>
+                        <option value="Spanish">SPANISH</option>
+                        <option value="Russian">RUSSIAN</option>
+                        <option value="Arabic">ARABIC</option>
+                        <option value="Portuguese">PORTUGUESE</option>
+                        <option value="Italian">ITALIAN</option>
+                        <option value="Dutch">DUTCH</option>
+                        <option value="Indonesian">INDONESIAN</option>
+                        <option value="Vietnamese">VIETNAMESE</option>
+                        <option value="Thai">THAI</option>
+                        <option value="Turkish">TURKISH</option>
+                        <option value="Hindi">HINDI</option>
+                    </select>
+                    <div class="input-action"><svg style="width:14px;height:14px;fill:#aaa;" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-label"><span>SPEED</span> <span id="speed-val" style="color:#1a1a1a;">1.0x</span></div>
+                <div class="slider-wrap">
+                    <input type="range" id="voice-speed" min="0.5" max="2.0" step="0.1" value="1.0" oninput="document.getElementById('speed-val').innerText = this.value + 'x'">
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-outline" onclick="testVoiceApi(event)">TEST CONNECTION</button>
+                <button class="btn btn-primary" onclick="saveVoiceConfig()">SAVE VOICE CONFIG</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

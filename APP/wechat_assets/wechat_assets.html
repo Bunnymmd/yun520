@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>WeChat Assets & Bills</title>
+<link rel="stylesheet" href="./wechat_assets.css">
+<script>window.__MINI_ROUTE__ = "wechat_assets";</script>
+<script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<script defer src="../core/db.js"></script>
+<script defer src="./wechat_assets.js"></script>
+<script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="page-shell">
+    <div class="nav-header">
+        <button class="nav-icon nav-left" type="button" aria-label="返回">
+            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+        <div class="nav-title">资产与账单</div>
+        <div class="nav-slot" aria-hidden="true"></div>
+    </div>
+
+    <div class="page-scroll">
+        <section class="hero-card">
+            <div class="hero-top">
+                <div>
+                    <div class="hero-label">总资产</div>
+                    <div class="hero-caption">Assets Overview</div>
+                </div>
+                <button class="ghost-button hero-edit-button" id="open-estimate-modal" type="button" aria-label="GENERATE ASSETS FROM MASK PRESET">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 3v3"></path><path d="M12 18v3"></path><path d="M4.93 4.93l2.12 2.12"></path><path d="M16.95 16.95l2.12 2.12"></path><path d="M3 12h3"></path><path d="M18 12h3"></path><path d="M4.93 19.07l2.12-2.12"></path><path d="M16.95 7.05l2.12-2.12"></path><path d="M8.5 15.5L15.5 8.5"></path></svg>
+                </button>
+            </div>
+
+            <div class="hero-amount-row">
+                <div class="hero-amount-block">
+                    <button class="hero-eye-button" id="toggle-balance" type="button" aria-label="切换金额显示">
+                        <svg class="icon-svg" id="eye-icon" viewBox="0 0 24 24">
+                            <path id="eye-outline" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+                            <circle id="eye-pupil" cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                    <div class="hero-amount-copy">
+                        <span class="hero-currency">¥</span>
+                        <span class="hero-amount" id="total-assets">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-source-row">
+                <span class="hero-source">WeChat支付</span>
+            </div>
+        </section>
+
+        <section class="quick-grid" aria-label="资产功能">
+            <div class="quick-item">
+                <div class="quick-icon quick-icon-green">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                </div>
+                <div class="quick-name">理财</div>
+                <div class="quick-note">Fund</div>
+            </div>
+            <div class="quick-item">
+                <div class="quick-icon quick-icon-sand">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                </div>
+                <div class="quick-name">工作</div>
+                <div class="quick-note">Career</div>
+            </div>
+            <div class="quick-item">
+                <div class="quick-icon quick-icon-blue">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                </div>
+                <div class="quick-name">银行卡</div>
+                <div class="quick-note">Cards</div>
+            </div>
+            <div class="quick-item">
+                <div class="quick-icon quick-icon-rose">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </div>
+                <div class="quick-name">支付设置</div>
+                <div class="quick-note">Setting</div>
+            </div>
+        </section>
+
+        <section class="bill-panel">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-title">账单记录</h2>
+                    <p class="section-sub">Recent Bills</p>
+                </div>
+                <button class="section-action" id="open-bill-modal" type="button">新增</button>
+            </div>
+            <div class="bill-list" id="bill-list"></div>
+        </section>
+    </div>
+</div>
+
+<div class="sheet-overlay" id="estimate-modal" hidden>
+    <div class="sheet-card" onclick="event.stopPropagation()">
+        <div class="sheet-title">GENERATE ASSETS</div>
+        <p class="sheet-intro">SELECT A MASK PRESET TO ESTIMATE A MODEST WECHAT PAY BALANCE. TOTAL ASSETS WILL ALWAYS MATCH THAT BALANCE.</p>
+
+        <div class="sheet-field">
+            <span class="sheet-label">MASK PRESET</span>
+            <select class="sheet-select" id="asset-mask-select"></select>
+        </div>
+
+        <div class="mask-preview" id="asset-mask-preview"></div>
+        <div class="sheet-status" id="estimate-status"></div>
+
+        <div class="sheet-actions sheet-actions-triple">
+            <button class="btn btn-secondary" id="cancel-estimate-modal" type="button">CANCEL</button>
+            <button class="btn btn-secondary" id="open-masks-route" type="button">MASKS</button>
+            <button class="btn btn-primary" id="generate-assets-button" type="button">GENERATE</button>
+        </div>
+    </div>
+</div>
+
+<div class="sheet-overlay" id="bill-modal" hidden>
+    <div class="sheet-card" onclick="event.stopPropagation()">
+        <div class="sheet-title">新增账单</div>
+        <form id="bill-form" class="sheet-form">
+            <label class="sheet-field">
+                <span class="sheet-label">账单标题</span>
+                <input class="sheet-input" id="bill-title-input" type="text" maxlength="30" placeholder="例如：零钱充值">
+            </label>
+            <label class="sheet-field">
+                <span class="sheet-label">分类说明</span>
+                <input class="sheet-input" id="bill-category-input" type="text" maxlength="30" placeholder="例如：银行卡 / 餐饮 / 转账">
+            </label>
+            <label class="sheet-field">
+                <span class="sheet-label">时间</span>
+                <input class="sheet-input" id="bill-time-input" type="text" maxlength="30" placeholder="例如：今天 14:20">
+            </label>
+            <label class="sheet-field">
+                <span class="sheet-label">金额</span>
+                <input class="sheet-input" id="bill-amount-input" type="text" inputmode="decimal" placeholder="0.00">
+            </label>
+            <div class="sheet-field">
+                <span class="sheet-label">类型</span>
+                <div class="type-toggle" id="bill-type-toggle">
+                    <button class="type-toggle-btn active" data-type="expense" type="button">支出</button>
+                    <button class="type-toggle-btn" data-type="income" type="button">收入</button>
+                </div>
+            </div>
+            <div class="sheet-actions">
+                <button class="btn btn-secondary" id="cancel-bill-modal" type="button">取消</button>
+                <button class="btn btn-primary" type="submit">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

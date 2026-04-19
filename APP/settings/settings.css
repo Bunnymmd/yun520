@@ -1,0 +1,122 @@
+/* 基础重置 */
+    :root {
+        --mini-bg: #f8f0f3;
+        --mini-card: #ffffff;
+        --mini-text: #1f1f1f;
+        --mini-muted: #9f9aa0;
+        --mini-line: rgba(26, 26, 26, 0.08);
+        --mini-shadow: 0 6px 18px rgba(26, 26, 26, 0.04);
+    }
+    * { 
+        box-sizing: border-box; 
+        margin: 0; 
+        padding: 0; 
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; 
+        -webkit-tap-highlight-color: transparent; 
+        outline: none; 
+    }
+    body { 
+        background-color: var(--mini-bg);
+        width: 100vw; 
+        height: 100vh; 
+        overflow: hidden; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    ::-webkit-scrollbar { display: none; }
+    
+    /* 顶部导航栏 - 高级感半透明玻璃拟态 */
+    .nav-bar {
+        height: 85px; 
+        width: 100%; 
+        padding: 0 20px; 
+        padding-top: 35px; /* 适配移动端状态栏安全区 */
+        background: rgba(248, 240, 243, 0.92); 
+        backdrop-filter: blur(15px); 
+        -webkit-backdrop-filter: blur(15px);
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between;
+        position: fixed; 
+        top: 0; 
+        z-index: 100;
+    }
+    .nav-back { 
+        width: 40px; 
+        height: 100%; 
+        display: flex; 
+        align-items: center; 
+        cursor: pointer; 
+        transition: opacity 0.2s;
+    }
+    .nav-back:active { opacity: 0.6; }
+    
+    /* 兼顾您点击标题返回的习惯 */
+    .nav-title { 
+        font-size: 16px; 
+        font-weight: 700; 
+        color: var(--mini-text); 
+        cursor: pointer; 
+        letter-spacing: 1px; 
+        text-transform: uppercase;
+        transition: opacity 0.2s;
+    }
+    .nav-title:active { opacity: 0.6; }
+    .nav-right { width: 40px; } /* 占位以保证标题绝对居中 */
+
+    /* 内容滚动区 */
+    .settings-content {
+        flex: 1; 
+        margin-top: 85px; 
+        padding: 20px 20px 40px;
+        overflow-y: auto; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 16px;
+    }
+
+    /* 设置项容器 */
+    .set-item {
+        background: var(--mini-card); 
+        border-radius: 20px; 
+        padding: 20px 24px;
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between;
+        cursor: pointer; 
+        transition: transform 0.15s ease, background 0.15s ease;
+        border: 1px solid var(--mini-line);
+        box-shadow: var(--mini-shadow);
+    }
+    .set-item:active { 
+        transform: scale(0.97); 
+        background: #f9f6f8; 
+    }
+    
+    .set-left { display: flex; align-items: center; gap: 20px; }
+    
+    /* 序号 - 已按要求改为小号字，去除镂空和透明效果 */
+    .set-num {
+        font-size: 15px; 
+        font-weight: 600; 
+        color: var(--mini-muted);
+        width: 28px;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    /* 文案排版 */
+    .set-text { display: flex; flex-direction: column; gap: 4px; }
+    .set-title { font-size: 15px; font-weight: 700; color: var(--mini-text); text-transform: uppercase; letter-spacing: 0.08em; }
+    /* 增加极简的英文副标题，提升整体视觉的高级感 */
+    .set-sub { font-size: 10px; font-weight: 700; color: #b1a6ac; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* 右侧箭头Icon */
+    .set-icon svg { 
+        width: 18px; 
+        height: 18px; 
+        fill: none; 
+        stroke: #c6b7be; 
+        stroke-width: 2.5; 
+        stroke-linecap: round; 
+        stroke-linejoin: round; 
+    }

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Settings</title>
+  <link rel="stylesheet" href="./settings.css">
+  <script>window.__MINI_ROUTE__ = "settings";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./settings.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="nav-bar">
+    <div class="nav-back" onclick="history.back()">
+        <svg style="width:24px;height:24px;fill:#1a1a1a;" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+        </svg>
+    </div>
+    <div class="nav-title" onclick="history.back()">SETTINGS</div>
+    <div class="nav-right"></div>
+</div>
+
+<div class="settings-content">
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">01</div>
+            <div class="set-text">
+                <span class="set-title">SECURITY</span>
+                <span class="set-sub">SECURITY & IDENTITY</span>
+            </div>
+        </div>
+        <div class="set-icon"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+    </div>
+
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">02</div>
+            <div class="set-text">
+                <span class="set-title">NOTICES</span>
+                <span class="set-sub">PUSH & NOTIFICATIONS</span>
+            </div>
+        </div>
+        <div class="set-icon"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+    </div>
+
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">03</div>
+            <div class="set-text">
+                <span class="set-title">INTERFACES</span>
+                <span class="set-sub">INTERFACES & PARAMS</span>
+            </div>
+        </div>
+        <div class="set-icon"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+    </div>
+
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">04</div>
+            <div class="set-text">
+                <span class="set-title">DEBUG</span>
+                <span class="set-sub">DEBUG & CONTROL</span>
+            </div>
+        </div>
+        <div class="set-icon"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+    </div>
+
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">05</div>
+            <div class="set-text">
+                <span class="set-title">STORAGE</span>
+                <span class="set-sub">STORAGE & MANAGEMENT</span>
+            </div>
+        </div>
+        <div class="set-icon"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+    </div>
+</div>
+</body>
+</html>

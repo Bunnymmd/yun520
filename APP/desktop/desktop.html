@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="google" content="notranslate">
+<title>云间兔chat</title>
+  <link rel="stylesheet" href="./desktop.css">
+  <script>window.__MINI_ROUTE__ = "desktop";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./desktop.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="screen-container">
+    <!-- 第一页：主屏 - 最高频核心应用 -->
+    <div class="page">
+        <div class="widgets-area">
+            <div class="w-88">
+                <div class="w-88-left">
+                    <div class="w-88-row">
+                        <svg style="width:16px;height:16px;fill:#333;" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                        <span class="w-88-text1 text-interactive-zone" id="txt-song-title">戀曲1998</span>
+                    </div>
+                    <div class="w-88-row">
+                        <svg style="width:16px;height:16px;fill:#333;" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span class="w-88-text2 text-interactive-zone" id="txt-song-singer">テスト歌をう</span>
+                    </div>
+                    <div class="w-88-text3">WMA --- 243kbps</div>
+                    <div class="w-88-prog"><div class="w-88-bar"></div></div>
+                    <div class="w-88-time">00:02:46 / 00:04:12</div>
+                </div>
+                <div class="w-88-cover"></div>
+            </div>
+            <div class="w-90">
+                <div class="w-90-tabs">
+                    <div class="w-90-tab tab-1">My Space <svg style="width:10px;height:10px;fill:#333;" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+                    <div class="w-90-tab tab-2">Page .1</div>
+                    <div class="w-90-tab tab-3">Page .2</div>
+                </div>
+                <div class="w-90-body">
+                    <div class="w-90-left">
+                        <div class="w-90-cover"></div>
+                        <div class="w-90-name">OLD ORANG</div>
+                        <div class="w-90-prog"><div class="w-90-prog-dot"></div></div>
+                        <div class="w-90-ctrls">
+                            <svg class="w-90-ctrl-icon" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                            <svg class="w-90-ctrl-icon" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            <div class="w-90-ctrl-pause"></div>
+                            <svg class="w-90-ctrl-icon" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            <svg class="w-90-ctrl-icon" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
+                    </div>
+                    <div class="w-90-right">
+                        <div class="w-90-r-top"></div>
+                        <div class="w-90-r-bot">
+                            <div class="w-90-info profile-interactive-zone" id="info-profile-bg">
+                                <div class="w-90-info-line"><svg style="width:8px;height:8px;fill:#555;margin-right:4px;" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg> Group : <span id="txt-group">Grade 2 Class 4</span></div>
+                                <div class="w-90-info-line"><svg style="width:8px;height:8px;fill:#555;margin-right:4px;" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg> Email : <span id="txt-email">@www.yourmail.com</span></div>
+                                <div class="w-90-info-line"><svg style="width:8px;height:8px;fill:#555;margin-right:4px;" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg> Phone : <span id="txt-phone">+86 - 110 1111 1111</span></div>
+                            </div>
+                            <div class="w-90-box" id="img-profile-box"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="apps-area">
+            <div class="app-grid">
+                <div class="app-item p1-wechat"><div class="app-icon"></div><span class="app-name">WeChat</span></div>
+                <div class="app-item p1-info"><div class="app-icon"></div><span class="app-name">占位24</span></div>
+                <div class="app-item p2-contact"><div class="app-icon"></div><span class="app-name">联系人</span></div>
+                <div class="app-item p1-couple"><div class="app-icon"></div><span class="app-name">情侣空间</span></div>
+                <div class="app-item p1-anni"><div class="app-icon"></div><span class="app-name">纪念日</span></div>
+                <div class="app-item p1-company"><div class="app-icon"></div><span class="app-name">陪伴</span></div>
+                <div class="app-item p1-meet"><div class="app-icon"></div><span class="app-name">遇见</span></div>
+                <div class="app-item p2-music"><div class="app-icon"></div><span class="app-name">音乐</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二页：次高频生活/娱乐应用 -->
+    <div class="page">
+        <div class="widgets-area widgets-area-p2">
+            <div class="w-31">
+                <div class="w-31-header">
+                    <div class="w-31-arrows">
+                        <svg style="width:16px;height:16px;fill:#333;" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        <svg style="width:16px;height:16px;fill:#333;" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                        <svg style="width:16px;height:16px;fill:#333;" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    </div>
+                    <div class="w-31-title">
+                        <svg style="width:12px;height:12px;fill:none;stroke:#333;stroke-width:2;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span style="font-size:8px;vertical-align:top;">*</span>戀戀備忘錄
+                    </div>
+                    <svg style="width:18px;height:18px;fill:#333;" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                </div>
+                <div class="w-31-body">
+                    <div class="w-31-scroll">
+                        <svg style="width:8px;height:8px;fill:#eee;" viewBox="0 0 24 24"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/></svg>
+                        <div class="w-31-s-thumb"></div>
+                        <svg style="width:8px;height:8px;fill:#eee;" viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>
+                    </div>
+                </div>
+            </div>
+            <div class="w-6">
+                <div class="w-6-left">
+                    <div class="w-6-num" id="dynamic-date">--</div>
+                    <div class="w-6-month" id="dynamic-month-year"><span class="w-6-month-dec">*°</span>Month 0000<span class="w-6-month-dec">*°*</span></div>
+                </div>
+                <div class="w-6-right" id="dynamic-calendar-grid"></div>
+            </div>
+        </div>
+        <div class="apps-area">
+            <div class="app-grid">
+                <div class="app-item p2-novel"><div class="app-icon"></div><span class="app-name">小说</span></div>
+                <div class="app-item p2-game"><div class="app-icon"></div><span class="app-name">游戏</span></div>
+                <div class="app-item p2-shop"><div class="app-icon"></div><span class="app-name">购物</span></div>
+                <div class="app-item p2-forum"><div class="app-icon"></div><span class="app-name">论坛</span></div>
+                <div class="app-item p2-phonecheck"><div class="app-icon"></div><span class="app-name">查手机</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第三页：低频个性化应用 -->
+    <div class="page">
+        <div class="widgets-area">
+            <div class="w-33">
+                <div class="w-33-media">
+                    <div class="w-33-cover"></div>
+                    <div class="w-33-row1">
+                        <span class="text-interactive-zone" id="txt-card-likes-label" style="font-size:14px;">LIKES</span>
+                        <div class="w-33-stats">
+                            <div class="w-33-stat"><svg style="width:16px;height:16px;fill:#fff;" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span class="text-interactive-zone" id="txt-card-like-count">99+</span></div>
+                            <div class="w-33-stat"><svg style="width:16px;height:16px;fill:#fff;" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span class="text-interactive-zone" id="txt-card-comment-count">99+</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-33-row2">
+                    <span class="text-interactive-zone" id="txt-card-main-title">Old Song</span>
+                    <svg style="width:18px;height:18px;fill:none;stroke:#333;stroke-width:2;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span style="font-size:10px;margin-left:-6px;align-self:flex-end;margin-bottom:4px;">。</span>
+                </div>
+                <div class="w-33-row3">
+                    <div class="w-33-lyrics text-interactive-zone" id="txt-card-lyrics">A smile from a veil? Do you think you can tell?<br>And did they get you to trade, your heroes for ghosts?<br>Hot ashes for trees?</div>
+                    <div class="w-33-tags text-interactive-zone" id="txt-card-tags"><div>#UI</div><div>#Old</div><div>#Orange</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="apps-area">
+            <div class="app-grid">
+                <div class="app-item p3-closet"><div class="app-icon"></div><span class="app-name">21st Closet</span></div>
+                <div class="app-item p3-live"><div class="app-icon"></div><span class="app-name">直播</span></div>
+                <div class="app-item p3-if"><div class="app-icon"></div><span class="app-name">IF线</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第四页：保留原音乐组件页 -->
+    <div class="page">
+        <div class="widgets-area">
+            <div class="w-14">
+                <div class="w-14-top">
+                    <div class="w-14-cover"></div>
+                    <div class="w-14-info">
+                        <div class="w-14-title text-interactive-zone" id="txt-music-title">How I Wish You Were Her</div>
+                    </div>
+                    <div class="w-14-wave"><div class="w-14-bar1"></div><div class="w-14-bar2"></div><div class="w-14-bar3"></div><div class="w-14-bar4"></div></div>
+                </div>
+                <div class="w-14-mid">
+                    <span>1:09</span>
+                    <div class="w-14-prog-wrap"><div class="w-14-prog-fill"></div></div>
+                    <span>-3:52</span>
+                </div>
+                <div class="w-14-bot">
+                    <svg style="width:20px;height:20px;fill:none;stroke:#333;stroke-width:2;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg style="width:20px;height:20px;fill:#333;" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    <div class="w-14-play"></div>
+                    <svg style="width:20px;height:20px;fill:#333;" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    <svg style="width:20px;height:20px;fill:#333;" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9v7c0 1.1.9 2 2 2h4v-8H5v-1c0-3.87 3.13-7 7-7s7 3.13 7 7v1h-4v8h4c1.1 0 2-.9 2-2v-7c0-4.97-4.03-9-9-9z"/></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 底部固定Dock栏 - 严格按要求修改为：信息、世界书、主题、设置 -->
+<div class="dock">
+    <div class="app-item dock-message"><div class="app-icon"></div><span class="app-name">MESSAGE</span></div>
+    <div class="app-item dock-worldbook"><div class="app-icon"></div><span class="app-name">WORLDBOOK</span></div>
+    <div class="app-item dock-theme"><div class="app-icon"></div><span class="app-name">THEME</span></div>
+    <div class="app-item dock-settings"><div class="app-icon"></div><span class="app-name">SETTINGS</span></div>
+</div>
+
+<!-- 图片更换弹窗 -->
+<div id="ins-image-modal" class="ins-modal-overlay">
+    <div class="ins-modal">
+        <div class="ins-modal-title">更换图片</div>
+        <input type="text" id="ins-image-url" class="ins-input" placeholder="输入URL">
+        <div class="ins-divider">Or</div>
+        <label class="ins-file-upload">
+            <input type="file" id="ins-image-file" accept="image/*">
+            本地文件
+        </label>
+        <div class="ins-modal-actions">
+            <button class="ins-btn-cancel" id="ins-image-cancel">取消</button>
+            <button class="ins-btn-save" id="ins-image-save">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 专属名片修改弹窗 -->
+<div id="ins-profile-modal" class="ins-modal-overlay">
+    <div class="ins-modal">
+        <div class="ins-modal-title">修改专属名片</div>
+        
+        <input type="text" id="ins-prof-group" class="ins-input" placeholder="Group...">
+        <input type="text" id="ins-prof-email" class="ins-input" placeholder="Email...">
+        <input type="text" id="ins-prof-phone" class="ins-input" placeholder="Phone...">
+        
+        <div class="ins-divider">名片图片更换</div>
+        <input type="text" id="ins-prof-img-url" class="ins-input" placeholder="图片 URL (可选)">
+        <label class="ins-file-upload">
+            <input type="file" id="ins-prof-img-file" accept="image/*">
+            + 选取本地图片
+        </label>
+        
+        <div class="ins-modal-actions">
+            <button class="ins-btn-cancel" id="ins-prof-cancel">取消</button>
+            <button class="ins-btn-save" id="ins-prof-save">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 文案修改弹窗 -->
+<div id="ins-text-modal" class="ins-modal-overlay">
+    <div class="ins-modal">
+        <div class="ins-modal-title">修改文案</div>
+        <textarea id="ins-text-content" class="ins-input" placeholder="输入要修改的文案..." style="min-height: 100px; resize: vertical;"></textarea>
+        <div class="ins-modal-actions">
+            <button class="ins-btn-cancel" id="ins-text-cancel">取消</button>
+            <button class="ins-btn-save" id="ins-text-save">保存修改</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

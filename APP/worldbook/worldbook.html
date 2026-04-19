@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>World Lore / 世界书</title>
+  <link rel="stylesheet" href="./worldbook.css">
+  <script>window.__MINI_ROUTE__ = "worldbook";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./worldbook.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="view-container active" id="view-groups">
+    <div class="nav-header">
+        <div class="nav-left"><svg class="icon-svg" viewBox="0 0 24 24" onclick="returnToDesktop()"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
+        <div class="nav-title" onclick="returnToDesktop()">WORLD LORE</div>
+        <div class="nav-right"></div>
+    </div>
+    <div class="content-scroll" id="group-list">
+        </div>
+    <div class="fab-btn" id="fab-group">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+</div>
+
+<div class="view-container" id="view-entries">
+    <div class="nav-header">
+        <div class="nav-left"><svg class="icon-svg" viewBox="0 0 24 24" onclick="backToGroups()"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div class="nav-title" id="current-group-title">GROUP NAME</div>
+        <div class="nav-right"></div>
+    </div>
+    <div class="content-scroll" id="entry-list">
+        </div>
+    <div class="fab-btn" onclick="openEntryEditor()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+</div>
+
+<div class="view-container" id="view-editor">
+    <div class="nav-header">
+        <div class="nav-left"><svg class="icon-svg" viewBox="0 0 24 24" onclick="backToEntries()"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div class="nav-title" id="editor-title">NEW ENTRY</div>
+        <div class="nav-right"></div>
+    </div>
+    <div class="content-scroll" style="padding-top: 10px; gap: 20px;">
+        <div class="form-group">
+            <label class="form-label">Title / 词条标识</label>
+            <input type="text" id="inp-title" class="flat-input" placeholder="Identifier name">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Category / 分类</label>
+            <div class="tab-group">
+                <div class="tab-btn active" onclick="setTab('inp-category', 'GLOBAL', this)">全局 (GLOBAL)</div>
+                <div class="tab-btn" onclick="setTab('inp-category', 'EXTENSION', this)">拓展 (EXT)</div>
+            </div>
+            <input type="hidden" id="inp-category" value="GLOBAL">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Trigger / 生效方式</label>
+            <div class="tab-group">
+                <div class="tab-btn active" onclick="setTrigger('ALWAYS', this)">始终生效</div>
+                <div class="tab-btn" onclick="setTrigger('KEYWORD', this)">关键词生效</div>
+            </div>
+            <input type="hidden" id="inp-trigger" value="ALWAYS">
+        </div>
+
+        <div class="form-group" id="keyword-wrap">
+            <label class="form-label">Keywords / 关键词 (逗号分隔)</label>
+            <input type="text" id="inp-keywords" class="flat-input" placeholder="e.g. 魔法, 设定, 核心">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Injection Position / 注入位置</label>
+            <div class="tab-group">
+                <div class="tab-btn active" onclick="setTab('inp-position', 'BEFORE', this)">前 (PRE)</div>
+                <div class="tab-btn" onclick="setTab('inp-position', 'MIDDLE', this)">中 (MID)</div>
+                <div class="tab-btn" onclick="setTab('inp-position', 'AFTER', this)">后 (POST)</div>
+            </div>
+            <input type="hidden" id="inp-position" value="BEFORE">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Content / 核心内容</label>
+            <textarea id="inp-content" class="flat-textarea" placeholder="Enter world rules, character lore, or global settings..."></textarea>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+            <button class="btn-flat btn-save" style="padding: 20px;" onclick="saveEntry()">SAVE ENTRY (保存)</button>
+            <div style="display: flex; gap: 12px;" id="editor-actions-extra">
+                <button class="btn-flat btn-cancel" onclick="exportEntry()">EXPORT JSON</button>
+                <button class="btn-flat btn-danger" onclick="deleteEntry()">DELETE</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="group-modal">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">ADD GROUP</div>
+        <div class="form-group">
+            <label class="form-label">Group Name / 分组名</label>
+            <input type="text" id="inp-group-name" class="flat-input" placeholder="e.g. Main Lore">
+        </div>
+        <div style="text-align: center; font-size: 10px; color: #aaa; margin: 10px 0;">OR IMPORT</div>
+        <button class="btn-flat btn-cancel" onclick="document.getElementById('inp-import-group').click()">IMPORT JSON FILE</button>
+        <input type="file" id="inp-import-group" class="hidden-input" accept=".json" onchange="importGroup(event)">
+        
+        <div class="modal-actions">
+            <button class="btn-flat btn-cancel" onclick="closeGroupModal()">CANCEL</button>
+            <button class="btn-flat btn-save" onclick="saveGroup()">CREATE</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

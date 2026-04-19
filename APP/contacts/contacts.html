@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>联系人 / Contacts</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="./contacts.css">
+  <script>window.__MINI_ROUTE__ = "contacts";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="../core/png_card.js"></script>
+  <script defer src="./contacts.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="view-container active" id="view-list">
+    <div class="nav-header">
+        <div class="nav-left"></div>
+        <div class="nav-title" onclick="returnToParent()">联系人</div>
+        <div class="nav-right"></div>
+    </div>
+
+    <div class="list-scroll" id="contact-list-container">
+        </div>
+
+    <div class="fab-btn" onclick="openOptionsModal()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+</div>
+
+<div class="view-container" id="view-network">
+    <div class="nav-header">
+        <div class="nav-left"></div>
+        <div class="nav-title" onclick="returnToParent()">关系网</div>
+        <div class="nav-right"></div>
+    </div>
+    <div class="list-scroll" id="network-main-list">
+        </div>
+</div>
+
+<div class="view-container" id="view-network-detail">
+    <div class="nav-header">
+        <div class="nav-left"><svg class="icon-svg" viewBox="0 0 24 24" onclick="closeNetworkDetail()"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div class="nav-title" id="network-detail-title">RELATIONS</div>
+        <div class="nav-right"></div>
+    </div>
+    <div class="list-scroll" id="network-relation-list">
+        </div>
+    <div class="fab-btn" onclick="openRelationModal()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+</div>
+
+<div class="dock-bar" id="dock-bar">
+    <div class="dock-item active" onclick="switchListTab('CHAR')">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>CHAR</span>
+    </div>
+    <div class="dock-item" onclick="switchListTab('NPC')">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>NPC</span>
+    </div>
+    <div class="dock-item" onclick="switchMainView('view-network', this); loadNetworkMainList();">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>关系网</span>
+    </div>
+</div>
+
+<div class="view-container" id="view-editor">
+    <div class="nav-header">
+        <div class="nav-left"><svg class="icon-svg" viewBox="0 0 24 24" onclick="closeEditor()"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div class="nav-title" id="editor-title" onclick="closeEditor()">NEW CONTACT</div>
+        <div class="nav-right"></div>
+    </div>
+    
+    <div class="editor-scroll">
+        <div class="capture-area" id="capture-area">
+            <div class="acrylic-standee">
+                <div class="standee-hole"></div>
+                
+                <div class="standee-top-row">
+                    <div class="standee-avatar" id="badge-avatar" onclick="document.getElementById('inp-avatar').click()"></div>
+                    <div class="standee-info">
+                        <div class="standee-info-row">
+                            <span class="standee-label">昵称</span>
+                            <span class="standee-value" id="badge-nickname">Name...</span>
+                        </div>
+                        <div class="standee-info-row">
+                            <span class="standee-label">全名</span>
+                            <span class="standee-value" id="badge-name">Full Name</span>
+                        </div>
+                        <div class="standee-info-row">
+                            <span class="standee-label">性别</span>
+                            <span class="standee-value" id="badge-gender">Secret</span>
+                        </div>
+                        <div class="standee-info-row" style="margin-top: 4px;">
+                            <span class="standee-label">账号</span>
+                            <span class="standee-value" id="badge-account" style="font-family: monospace; font-size: 9px;">AUTO_GENERATE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="standee-divider"></div>
+                
+                <div class="standee-info-row" style="width: 100%; margin-bottom: 6px;">
+                    <span class="standee-label">语言</span>
+                    <span class="standee-value" id="badge-language" style="color: #666;">中文 (Mandarin)</span>
+                </div>
+
+                <div class="standee-info-row" style="width: 100%; margin-bottom: 8px;">
+                    <span class="standee-label">签名</span>
+                    <span class="standee-value" id="badge-sign" style="font-weight: 600; color: #555;">Signature text...</span>
+                </div>
+                
+                <div class="standee-lore-box" id="badge-lore">Detailed background story or lore will be displayed here...</div>
+
+                <div class="standee-assoc-row">
+                    <span id="badge-preset">P: NONE</span>
+                    <span id="badge-worldbook">W: NONE</span>
+                </div>
+            </div>
+        </div>
+
+        <input type="file" id="inp-avatar" class="hidden-input" accept="image/*">
+        <input type="hidden" id="val-avatar" value="">
+
+        <div class="form-section">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Nickname (昵称)</label>
+                    <input type="text" id="inp-nickname" class="flat-input" placeholder="Display name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Name (姓名)</label>
+                    <input type="text" id="inp-name" class="flat-input" placeholder="Real name">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Gender (性别)</label>
+                    <div class="tab-group" style="flex-wrap: nowrap;">
+                        <div class="tab-btn active" onclick="setGender('M', this)">M</div>
+                        <div class="tab-btn" onclick="setGender('F', this)">F</div>
+                        <div class="tab-btn" onclick="setGender('X', this)">X</div>
+                    </div>
+                    <input type="hidden" id="inp-gender" value="M">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Language (合成语种)</label>
+                    <div class="input-wrap" onclick="toggleDropdown('lang-list')">
+                        <input type="text" id="disp-language" readonly placeholder="Language" value="中文 (Mandarin)">
+                        <input type="hidden" id="inp-language" value="中文 (Mandarin)">
+                        <div class="input-action">
+                            <svg style="width:16px;height:16px;fill:var(--text-sub);" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                        </div>
+                        <div id="lang-list" class="custom-dropdown">
+                            <div class="dropdown-item" onclick="selectDropdownItem('language', '中文 (Mandarin)', '中文 (Mandarin)', event)">中文 (Mandarin)</div>
+                            <div class="dropdown-item" onclick="selectDropdownItem('language', '粤语 (Cantonese)', '粤语 (Cantonese)', event)">粤语 (Cantonese)</div>
+                            <div class="dropdown-item" onclick="selectDropdownItem('language', '英语 (English)', '英语 (English)', event)">英语 (English)</div>
+                            <div class="dropdown-item" onclick="selectDropdownItem('language', '日语 (Japanese)', '日语 (Japanese)', event)">日语 (Japanese)</div>
+                            <div class="dropdown-item" onclick="selectDropdownItem('language', '韩语 (Korean)', '韩语 (Korean)', event)">韩语 (Korean)</div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Signature (个性签名)</label>
+                <input type="text" id="inp-sign" class="flat-input" placeholder="A short quote...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Lore / Setting (设定内容)</label>
+                <textarea id="inp-lore" class="flat-textarea" placeholder="Detailed background story..."></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">User Preset (预设关联)</label>
+                    <div class="input-wrap" onclick="toggleDropdown('preset-list')">
+                        <input type="text" id="disp-preset" readonly placeholder="None" value="None">
+                        <input type="hidden" id="inp-preset" value="NONE">
+                        <div class="input-action">
+                            <svg style="width:16px;height:16px;fill:var(--text-sub);" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                        </div>
+                        <div id="preset-list" class="custom-dropdown">
+                            
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Worldbook (关联世界书)</label>
+                    <div class="input-wrap" onclick="toggleDropdown('worldbook-list')">
+                        <input type="text" id="disp-worldbook" readonly placeholder="Select one or more" value="None">
+                        <input type="hidden" id="inp-worldbook" value="NONE">
+                        <div class="input-action">
+                            <svg style="width:16px;height:16px;fill:var(--text-sub);" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                        </div>
+                        <div id="worldbook-list" class="custom-dropdown">
+                            
+                        </div>
+                    </div>
+                    <div class="assoc-chip-row" id="worldbook-selection-tags"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-group">
+            <button class="btn-flat btn-primary" onclick="saveContact()">SAVE CONTACT</button>
+            <div class="btn-row" id="edit-actions" style="display: none;">
+                <button class="btn-flat btn-secondary" onclick="exportPNG()" style="flex: 1;">PNG</button>
+                <button class="btn-flat btn-secondary" onclick="exportJSON()" style="flex: 1;">JSON</button>
+                <button class="btn-flat btn-danger" onclick="deleteContact()" style="flex: 1;">DEL</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="options-modal">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">ADD NEW</div>
+        <button class="btn-flat btn-primary" onclick="openEditor(); closeOptionsModal();">MANUAL ADD</button>
+        <button class="btn-flat btn-secondary" onclick="document.getElementById('inp-import').click(); closeOptionsModal();">IMPORT ( PNG/JSON)</button>
+        <button class="btn-flat btn-cancel" onclick="closeOptionsModal()">CANCEL</button>
+    </div>
+    <input type="file" id="inp-import" class="hidden-input" accept=".json, .png" onchange="importData(event)">
+</div>
+
+<div class="modal-overlay" id="relation-modal">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">RELATION</div>
+        <input type="hidden" id="inp-rel-edit-id" value="">
+        <div class="form-group" id="rel-target-group">
+            <label class="form-label">Target (目标)</label>
+            <div class="input-wrap" onclick="toggleDropdown('rel-target-list')">
+                <input type="text" id="disp-rel-target" readonly placeholder="Select target...">
+                <input type="hidden" id="inp-rel-target" value="">
+                <input type="hidden" id="inp-rel-target-name" value="">
+                <div class="input-action">
+                    <svg style="width:16px;height:16px;fill:var(--text-sub);" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                </div>
+                <div id="rel-target-list" class="custom-dropdown">
+                    </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Relation (关系类型)</label>
+            <div class="tab-group" style="flex-wrap: wrap;">
+                <div class="tab-btn active" onclick="setRelationType('家人', this)">家人</div>
+                <div class="tab-btn" onclick="setRelationType('恋人', this)">恋人</div>
+                <div class="tab-btn" onclick="setRelationType('朋友', this)">朋友</div>
+                <div class="tab-btn" onclick="setRelationType('同事', this)">同事</div>
+                <div class="tab-btn" onclick="setRelationType('CUSTOM', this)">填写</div>
+            </div>
+            <input type="hidden" id="inp-rel-type" value="家人">
+        </div>
+        <div class="form-group" id="custom-rel-group" style="display: none;">
+            <input type="text" id="inp-rel-custom" class="flat-input" placeholder="输入自定义关系...">
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label class="form-label">Description (关系描述)</label>
+            <textarea id="inp-rel-desc" class="flat-textarea" placeholder="描述他们之间的关系详情..." style="min-height: 65px;"></textarea>
+        </div>
+        <div class="action-group" style="padding: 10px 0 0 0;">
+            <button class="btn-flat btn-primary" onclick="saveRelation()">SAVE RELATION</button>
+            <div class="btn-row" id="rel-edit-actions" style="display: none; margin-top: 5px;">
+                <button class="btn-flat btn-secondary" onclick="exportRelation()" style="flex: 1;">EXPORT</button>
+                <button class="btn-flat btn-danger" onclick="deleteRelation()" style="flex: 1;">DEL</button>
+            </div>
+            <button class="btn-flat btn-secondary" style="margin-top:5px;" onclick="closeRelationModal()">CANCEL</button>
+        </div>
+    </div>
+</div>
+<div id="contacts-dropdown-layer" class="contacts-floating-layer" data-mini-floating-layer="1" aria-hidden="true"></div>
+</body>
+</html>

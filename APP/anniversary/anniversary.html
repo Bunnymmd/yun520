@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Anniversary Framework Pro</title>
+  <link rel="stylesheet" href="./anniversary.css">
+  <script>window.__MINI_ROUTE__ = "anniversary";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./anniversary.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="page-container">
+    <div class="nav-header">
+        <div class="nav-title" onclick="returnToDesktop()">纪念日</div>
+    </div>
+
+    <div class="view-container active" id="view-me">
+        <div class="content-scroll" id="events-container-me"></div>
+    </div>
+
+    <div class="view-container" id="view-ta">
+        <div class="ta-overview" id="ta-overview">
+            <div class="content-scroll ta-overview-scroll">
+                <div class="ta-overview-copy">
+                    <div class="ta-overview-kicker">CONTACT ARCHIVE</div>
+                    <div class="ta-overview-title">联系人纪念日</div>
+                    <div class="ta-overview-note">先选一个联系人，再只为 TA 生成专属纪念日和内嵌心声。</div>
+                </div>
+                <div class="char-selector-grid" id="char-selector"></div>
+            </div>
+        </div>
+
+        <div class="ta-detail-panel" id="ta-detail-panel">
+            <div class="content-scroll ta-detail-scroll">
+                <div class="ta-contact-hero">
+                    <button class="ta-back-btn ta-contact-back" type="button" onclick="closeTaContactDetail()" aria-label="返回联系人列表">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <div class="ta-contact-avatar" id="ta-detail-avatar"></div>
+                    <div class="ta-contact-copy">
+                        <div class="ta-detail-header-kicker">联系人纪念日</div>
+                        <div class="ta-detail-header-name" id="ta-detail-header-name" hidden>Contact</div>
+                        <div class="ta-contact-name" id="ta-detail-name">Contact</div>
+                        <div class="ta-contact-meta" id="ta-detail-meta">点击右上角魔棒按双方设定生成 4-6 条纪念日。</div>
+                    </div>
+                    <button class="ta-refresh-fab ta-magic-btn" id="ta-refresh-fab" type="button" onclick="refreshSelectedTaContact()" title="生成当前联系人纪念日" aria-label="生成当前联系人纪念日">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3v3"></path>
+                            <path d="M12 18v3"></path>
+                            <path d="M4.93 4.93l2.12 2.12"></path>
+                            <path d="M16.95 16.95l2.12 2.12"></path>
+                            <path d="M3 12h3"></path>
+                            <path d="M18 12h3"></path>
+                            <path d="M4.93 19.07l2.12-2.12"></path>
+                            <path d="M16.95 7.05l2.12-2.12"></path>
+                            <path d="M8.5 15.5L15.5 8.5"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="ta-events-list" id="events-container-ta"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dock-bar">
+        <div class="dock-item active" onclick="switchView('me', this)">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Me</span>
+        </div>
+
+        <div class="dock-add-btn" onclick="openAddModal()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+
+        <div class="dock-item" onclick="switchView('ta', this)">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Ta</span>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="add-modal">
+    <div class="modal-scroll-wrap" onclick="closeAddModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-header">NEW MEMORY</div>
+
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" id="ev-title" class="flat-input" placeholder="What happened?">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" id="ev-date" class="flat-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select id="ev-type" class="flat-select">
+                        <option value="Memory">Memory（纪念）</option>
+                        <option value="Birthday">Birthday（生日）</option>
+                        <option value="Target">Target（目标）</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Count Method</label>
+                <div class="tab-group">
+                    <div class="tab-btn active" onclick="setTab('ev-count', 'Up', this)">Count Up (已过)</div>
+                    <div class="tab-btn" onclick="setTab('ev-count', 'Down', this)">Count Down (倒数)</div>
+                </div>
+                <input type="hidden" id="ev-count" value="Up">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Link Identity</label>
+                <div class="tab-group">
+                    <div class="tab-btn active" onclick="setTab('ev-identity', 'ME', this); toggleCharInput(false)">Me</div>
+                    <div class="tab-btn" onclick="setTab('ev-identity', 'CHAR', this); toggleCharInput(true)">CHAR</div>
+                    <div class="tab-btn" onclick="setTab('ev-identity', 'NPC', this); toggleCharInput(true)">NPC</div>
+                </div>
+                <input type="hidden" id="ev-identity" value="ME">
+            </div>
+
+            <div class="form-group" id="char-name-wrap">
+                <label class="form-label" id="ev-related-contact-label">Associated Contact</label>
+                <select id="ev-related-contact" class="flat-select">
+                    <option value="">No linked contact</option>
+                </select>
+                <div class="form-hint" id="ev-related-contact-hint">On `ME`, choosing a contact will sync this memory to that contact's `TA` page too.</div>
+            </div>
+
+            <div class="form-row" style="align-items: center; margin-top: 5px;">
+                <label class="form-label" style="flex:1; margin:0;">Pin to Top (置顶)</label>
+                <div class="toggle-switch" id="ev-pin" onclick="this.classList.toggle('active')"></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 5px;">
+                <label class="form-label">Custom Background</label>
+                <div class="file-upload-area">
+                    <div class="preview-bg" id="bg-preview"></div>
+                    <div id="upload-placeholder" style="display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; z-index:2;">
+                        <svg style="width:20px;height:20px;stroke:#aaa;fill:none;stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <span>Tap to Upload</span>
+                    </div>
+                    <input type="file" id="ev-bg-file" accept="image/*">
+                </div>
+                <input type="hidden" id="ev-bg-base64" value="">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-flat btn-cancel" onclick="closeAddModal()">Cancel</button>
+                <button class="btn-flat btn-delete" id="btn-delete" onclick="deleteEvent()">Delete</button>
+                <button class="btn-flat btn-save" onclick="saveEvent()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

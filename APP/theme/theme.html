@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Theme</title>
+  <link rel="stylesheet" href="./theme.css">
+  <style id="injected-custom-css"></style>
+  <script>window.__MINI_ROUTE__ = "theme";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./theme.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="nav-bar">
+    <div class="nav-back" onclick="handleBack()">
+        <svg style="width:24px;height:24px;fill:#1a1a1a;" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+        </svg>
+    </div>
+    <div class="nav-title" id="global-nav-title" onclick="handleBack()">THEME</div>
+</div>
+
+<div class="view-section active" id="view-main">
+    <div class="set-item" onclick="switchView('view-wallpaper', 'LOCK SCREEN & WALLPAPER')">
+        <div class="set-left">
+            <div class="set-num">01</div>
+            <div class="set-text">
+                <span class="set-title">WALLPAPER</span>
+                <span class="set-sub">LOCK SCREEN & WALLPAPER</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">02</div>
+            <div class="set-text">
+                <span class="set-title">STYLE</span>
+                <span class="set-sub">PERSONALIZED THEME</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="set-item" onclick="switchView('view-icons', 'ICONS & WIDGETS')">
+        <div class="set-left">
+            <div class="set-num">03</div>
+            <div class="set-text">
+                <span class="set-title">ICONS</span>
+                <span class="set-sub">ICONS & WIDGETS</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="set-item">
+        <div class="set-left">
+            <div class="set-num">04</div>
+            <div class="set-text">
+                <span class="set-title">FONTS</span>
+                <span class="set-sub">FONTS & PAGES</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="set-item" onclick="switchView('view-dev', 'DEVELOPER MODE')">
+        <div class="set-left">
+            <div class="set-num">05</div>
+            <div class="set-text">
+                <span class="set-title">DEVELOPER</span>
+                <span class="set-sub">DEVELOPER MODE</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="view-section" id="view-wallpaper">
+    <div class="wallpaper-container">
+        <div class="phone-column">
+            <div class="phone-title">LOCK SCREEN</div>
+            <div class="mockup-phone" id="mock-lock" onclick="triggerUpload('lock')">
+                <div class="mockup-lock-time">10:24</div>
+                <div class="mockup-lock-date">MON, OCT 24</div>
+            </div>
+            <div class="action-btns">
+                <button class="btn-action btn-reset" onclick="resetBg('lock')">RESET</button>
+                <button class="btn-action btn-save" onclick="saveBg('lock')">SAVE</button>
+            </div>
+        </div>
+
+        <div class="phone-column">
+            <div class="phone-title">DESKTOP</div>
+            <div class="mockup-phone" id="mock-desk" onclick="triggerUpload('desk')">
+                <div class="mockup-desk-grid">
+                    <div class="mockup-app"></div><div class="mockup-app"></div>
+                    <div class="mockup-app"></div><div class="mockup-app"></div>
+                    <div class="mockup-app"></div><div class="mockup-app"></div>
+                    <div class="mockup-app"></div><div class="mockup-app"></div>
+                </div>
+                <div class="mockup-desk-dock">
+                    <div class="mockup-dock-app"></div><div class="mockup-dock-app"></div>
+                    <div class="mockup-dock-app"></div><div class="mockup-dock-app"></div>
+                </div>
+            </div>
+            <div class="action-btns">
+                <button class="btn-action btn-reset" onclick="resetBg('desk')">RESET</button>
+                <button class="btn-action btn-save" onclick="saveBg('desk')">SAVE</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="view-section" id="view-icons">
+    <div class="control-panel">
+        <div class="control-title">GLOBAL CONTROLS</div>
+        <div class="slider-group">
+            <label>图标圆角 <span id="icon-radius-val">16px</span></label>
+            <input type="range" id="icon-radius-slider" min="0" max="40" value="16" oninput="updateIconRadius(this.value)" onchange="saveSetting('icon_radius', this.value)">
+        </div>
+        <div class="slider-group">
+            <label>图标尺寸 <span id="icon-size-val">60px</span></label>
+            <input type="range" id="icon-size-slider" min="36" max="64" value="60" oninput="updateIconSize(this.value)" onchange="saveSetting('icon_size', this.value)">
+        </div>
+        <div class="slider-group" style="margin-top:12px; padding-top:12px; border-top:1px solid #f0f0f0;">
+            <label>组件圆角 <span id="widget-radius-val">20px</span></label>
+            <input type="range" id="widget-radius-slider" min="0" max="50" value="20" oninput="updateWidgetRadius(this.value)" onchange="saveSetting('widget_radius', this.value)">
+        </div>
+    </div>
+
+    <div class="control-title" style="margin-top: 10px;">APP ICONS (20 INCLUDING DOCK)</div>
+    <div class="icon-grid" id="icon-grid-container"></div>
+
+    <div class="control-title" style="margin-top: 10px;">DESKTOP WIDGETS</div>
+    <div class="widget-list" id="widget-list-container"></div>
+</div>
+
+<div class="view-section" id="view-dev">
+    <div class="dev-title">GLOBAL STYLESHEET (CSS)</div>
+    <div class="dev-desc">除主标题、副标题和底部按钮外，其余文案保持中文。</div>
+    
+    <div class="css-editor-wrap">
+        <textarea id="css-editor" class="css-editor" spellcheck="false"></textarea>
+    </div>
+
+    <div class="dev-actions">
+        <button class="btn-reset" onclick="resetCSS()">RESET DEFAULT CSS</button>
+        <button class="btn-save" onclick="saveCSS()">SAVE & APPLY</button>
+    </div>
+</div>
+
+<input type="file" id="hidden-file-input" accept="image/*">
+<input type="file" id="icon-upload-input" accept="image/*">
+</body>
+</html>

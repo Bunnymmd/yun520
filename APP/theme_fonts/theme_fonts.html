@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Fonts & Pages</title>
+  <link rel="stylesheet" href="./theme_fonts.css">
+  <script>window.__MINI_ROUTE__ = "theme_fonts";</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script defer src="../core/db.js"></script>
+  <script defer src="./theme_fonts.js"></script>
+  <script defer src="../core/runtime.js"></script>
+</head>
+<body>
+<div class="toast-banner" id="toast">NOTICE</div>
+
+<div class="nav-bar">
+    <div class="nav-title" onclick="history.back()">FONTS & PAGES</div>
+</div>
+
+<div class="settings-container">
+    <div class="card">
+        <div class="card-title">GLOBAL FONT</div>
+        <div class="form-group">
+            <div class="form-label">FONT URL</div>
+            <div class="input-wrap">
+                <input type="text" id="font-url" placeholder="https://.../font.ttf">
+            </div>
+        </div>
+        
+        <div class="ins-divider">OR</div>
+        
+        <label class="file-upload">
+            <input type="file" id="font-file" accept=".ttf,.otf,.woff,.woff2">
+            UPLOAD LOCAL FONT
+        </label>
+
+        <div class="form-group" style="margin-top: 8px;">
+            <div class="form-label">FONT PREVIEW</div>
+            <div class="preview-box" id="font-preview">
+                THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-outline" id="btn-reset-font">RESET FONT</button>
+            <button class="btn btn-primary" id="btn-save-font">SAVE & APPLY</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">UI SCALE</div>
+        <div class="form-group">
+            <div class="form-label"><span>GLOBAL UI SCALE</span> <span id="scale-val" style="color:#1a1a1a;">100%</span></div>
+            <div class="slider-wrap">
+                <input type="range" id="scale-slider" min="80" max="120" step="1" value="100" oninput="previewScale(this.value)">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-outline" id="btn-reset-scale">RESET TO 100%</button>
+            <button class="btn btn-primary" id="btn-save-scale">SAVE SCALE</button>
+        </div>
+        <p style="font-size: 11px; color: #aaa; text-align: center;">SCALING AUTO-ADJUSTS THE VIEWPORT TO REDUCE CONTENT SHIFT.</p>
+    </div>
+</div>
+</body>
+</html>
