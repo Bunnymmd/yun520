@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contacts Editor Layout Smoke</title>
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    font: 14px/1.5 sans-serif;
+    background: #f6f6f6;
+    color: #111;
+  }
+
+  #result {
+    white-space: pre-wrap;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  iframe {
+    border: 0;
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    opacity: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="result">Running contacts editor layout smoke test...</div>
+<iframe id="app-frame" src="about:blank"></iframe>
+<script>
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function getParamNumber(name, fallback) {
+    const raw = new URLSearchParams(window.location.search).get(name);
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  }
+
+  async function waitFor(predicate, timeout = 15000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const value = predicate();
+      if (value) return value;
+      await sleep(50);
+    }
+    throw new Error('Timed out waiting for page state');
+  }
+
+  function setResult(ok, payload) {
+    const result = document.getElementById('result');
+    result.textContent = (ok ? 'PASS\n' : 'FAIL\n') + (
+      typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)
+    );
+    result.dataset.status = ok ? 'pass' : 'fail';
+  }
+
+  function openThemeDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('UIDesignDB', 3);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'id' });
+        }
+      };
+      request.onerror = () => reject(request.error || new Error('Failed to open theme DB'));
+      request.onsuccess = () => resolve(request.result);
+    });
+  }
+
+  async function setUiScale(scale) {
+    const db = await openThemeDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put({ id: 'ui_scale', value: scale });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Failed to write ui_scale'));
+    });
+    db.close();
+  }
+
+  window.addEventListener('load', async () => {
+    const width = getParamNumber('width', 640);
+    const height = getParamNumber('height', 1000);
+    const scale = getParamNumber('scale', 100);
+
+    try {
+      await setUiScale(scale);
+
+      const frame = document.getElementById('app-frame');
+      frame.style.width = `${width}px`;
+      frame.style.height = `${height}px`;
+      frame.src = '/APP/contacts/contacts.html';
+
+      await waitFor(() => {
+        const win = frame.contentWindow;
+        return win && win.MiniDB && win.MiniDB.__ready && typeof win.openEditor === 'function';
+      });
+
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      await win.MiniDB.ready();
+
+      const contactsDb = win.MiniDB.databases.contacts;
+      await Promise.all([
+        contactsDb.contacts.clear(),
+        contactsDb.relations.clear()
+      ]);
+
+      const contactId = await contactsDb.contacts.add({
+        type: 'CHAR',
+        nickname: 'Test',
+        name: 'Test Contact',
+        gender: 'M',
+        account: 'C_TEST_0001',
+        language: '中文 (Mandarin)',
+        signature: 'Layout smoke signature',
+        lore: 'A fairly long story block to keep the layout realistic and make the editor scroll area measurable.'.repeat(6),
+        presetAssoc: 'NONE',
+        worldbookAssoc: 'NONE',
+        avatar: ''
+      });
+
+      await win.openEditor(contactId);
+      await sleep(500);
+
+      const initial = await frame.contentWindow.eval(`(() => {
+        const editor = document.getElementById('view-editor');
+        const shell = editor && editor.querySelector('[data-mini-scale-shell=\"1\"]');
+        const scroll = document.querySelector('#view-editor .editor-scroll');
+        const action = document.querySelector('#view-editor .action-group');
+        const editActions = document.getElementById('edit-actions');
+        const rect = (el) => {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, height: r.height };
+        };
+        return {
+          viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight },
+          editor: rect(editor),
+          shell: rect(shell),
+          scroll: {
+            clientHeight: scroll.clientHeight,
+            scrollHeight: scroll.scrollHeight,
+            offsetHeight: scroll.offsetHeight,
+            scrollTop: scroll.scrollTop,
+            maxScrollTop: scroll.scrollHeight - scroll.clientHeight,
+            rect: rect(scroll),
+            overflowY: getComputedStyle(scroll).overflowY,
+            minHeight: getComputedStyle(scroll).minHeight
+          },
+          action: rect(action),
+          editActions: rect(editActions)
+        };
+      })()`);
+
+      await frame.contentWindow.eval(`(() => {
+        const scroll = document.querySelector('#view-editor .editor-scroll');
+        scroll.scrollTop = scroll.scrollHeight;
+      })()`);
+      await sleep(80);
+
+      const finalState = await frame.contentWindow.eval(`(() => {
+        const scroll = document.querySelector('#view-editor .editor-scroll');
+        const action = document.querySelector('#view-editor .action-group');
+        const editActions = document.getElementById('edit-actions');
+        const rect = (el) => {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, height: r.height };
+        };
+        return {
+          scrollTop: scroll.scrollTop,
+          maxScrollTop: scroll.scrollHeight - scroll.clientHeight,
+          scrollRect: rect(scroll),
+          actionRect: rect(action),
+          editActionsRect: rect(editActions)
+        };
+      })()`);
+
+      const scrollBottom = finalState.scrollRect.bottom;
+      const actionBottom = finalState.actionRect.bottom;
+      const editActionsBottom = finalState.editActionsRect.bottom;
+      const actionReachable = actionBottom <= scrollBottom + 1;
+      const editActionsReachable = editActionsBottom <= scrollBottom + 1;
+      const maxScrollReached = Math.abs(finalState.maxScrollTop - finalState.scrollTop) <= 2;
+
+      const payload = {
+        width,
+        height,
+        scale,
+        initial,
+        finalState,
+        checks: {
+          actionReachable,
+          editActionsReachable,
+          maxScrollReached,
+          actionOverflowPx: Number((actionBottom - scrollBottom).toFixed(2)),
+          editActionsOverflowPx: Number((editActionsBottom - scrollBottom).toFixed(2))
+        }
+      };
+
+      if (!actionReachable || !editActionsReachable || !maxScrollReached) {
+        throw new Error(JSON.stringify(payload, null, 2));
+      }
+
+      setResult(true, payload);
+    } catch (error) {
+      setResult(false, error && error.message ? error.message : String(error));
+    }
+  });
+</script>
+</body>
+</html>

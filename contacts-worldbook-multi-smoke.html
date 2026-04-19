@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contacts Worldbook Multi Smoke</title>
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    font: 14px/1.5 sans-serif;
+    background: #f6f6f6;
+    color: #111;
+  }
+  #result {
+    white-space: pre-wrap;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  iframe {
+    width: 430px;
+    height: 932px;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+  }
+</style>
+</head>
+<body>
+<div id="result">Running contacts multi worldbook smoke test...</div>
+<iframe id="app-frame" src="/APP/contacts/contacts.html"></iframe>
+<script>
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitFor(predicate, timeout = 15000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const value = predicate();
+      if (value) return value;
+      await sleep(50);
+    }
+    throw new Error('Timed out waiting for page state');
+  }
+
+  function setResult(ok, message) {
+    const result = document.getElementById('result');
+    result.textContent = (ok ? 'PASS\n' : 'FAIL\n') + message;
+    result.dataset.status = ok ? 'pass' : 'fail';
+  }
+
+  window.addEventListener('load', async () => {
+    try {
+      const frame = document.getElementById('app-frame');
+      await waitFor(() => {
+        const win = frame.contentWindow;
+        return win && win.MiniDB && win.MiniDB.__ready && typeof win.openEditor === 'function';
+      });
+
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      await win.MiniDB.ready();
+
+      const contactsDb = win.MiniDB.databases.contacts;
+      const worldbookDb = win.MiniDB.databases.worldbook;
+
+      await Promise.all([
+        contactsDb.contacts.clear(),
+        contactsDb.relations.clear(),
+        worldbookDb.groups.clear(),
+        worldbookDb.entries.clear()
+      ]);
+
+      const wbMainId = await worldbookDb.groups.add({ name: 'Main Lore', created: Date.now() });
+      const wbAltId = await worldbookDb.groups.add({ name: 'Alt Timeline', created: Date.now() + 1 });
+
+      await win.openEditor();
+      await sleep(300);
+
+      doc.getElementById('inp-nickname').value = 'Mika';
+      doc.getElementById('inp-nickname').dispatchEvent(new win.Event('input'));
+
+      win.toggleDropdown('worldbook-list');
+      await sleep(120);
+      doc.querySelector(`#worldbook-list .dropdown-item[data-value="worldbook:${wbMainId}"]`).click();
+      await sleep(80);
+      doc.querySelector(`#worldbook-list .dropdown-item[data-value="worldbook:${wbAltId}"]`).click();
+      await sleep(80);
+      win.closeAllDropdowns();
+      await sleep(80);
+
+      await win.saveContact();
+      await sleep(300);
+
+      const savedContacts = await contactsDb.contacts.toArray();
+      if (savedContacts.length !== 1) throw new Error('Expected one saved contact');
+      const saved = savedContacts[0];
+      if (saved.worldbookAssoc !== `worldbook:${wbMainId}|worldbook:${wbAltId}`) {
+        throw new Error('Saved contact did not keep multiple worldbooks');
+      }
+
+      await win.openEditor(saved.id);
+      await sleep(300);
+
+      const chipCount = doc.querySelectorAll('#worldbook-selection-tags .assoc-chip:not(.assoc-chip-empty)').length;
+      if (chipCount !== 2) throw new Error('Worldbook chip row did not render both selections');
+
+      const badgeText = doc.getElementById('badge-worldbook').textContent.trim();
+      if (!badgeText.includes('2 BOOKS')) {
+        throw new Error('Worldbook badge did not collapse to multi-book summary');
+      }
+
+      setResult(true, JSON.stringify({
+        savedWorldbookAssoc: saved.worldbookAssoc,
+        chipCount,
+        badgeText
+      }, null, 2));
+    } catch (error) {
+      setResult(false, error && error.stack ? error.stack : String(error));
+    }
+  });
+</script>
+</body>
+</html>

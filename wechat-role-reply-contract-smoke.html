@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeChat Role Reply Contract Smoke</title>
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    font: 14px/1.5 sans-serif;
+    background: #f6f6f6;
+    color: #111;
+  }
+  #result {
+    white-space: pre-wrap;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  iframe {
+    width: 430px;
+    height: 932px;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+  }
+</style>
+</head>
+<body>
+<div id="result">Running WeChat role reply contract smoke test...</div>
+<iframe id="app-frame" src="/APP/wechat/wechat.html"></iframe>
+<script>
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitFor(predicate, timeout = 20000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const value = predicate();
+      if (value) return value;
+      await sleep(50);
+    }
+    throw new Error('Timed out waiting for page state');
+  }
+
+  function setResult(ok, message) {
+    const result = document.getElementById('result');
+    result.textContent = (ok ? 'PASS\n' : 'FAIL\n') + message;
+    result.dataset.status = ok ? 'pass' : 'fail';
+  }
+
+  (async () => {
+    try {
+      const frame = document.getElementById('app-frame');
+      await waitFor(() => {
+        const win = frame.contentWindow;
+        return win && win.MiniDB && win.MiniDB.__ready;
+      });
+
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      await win.MiniDB.ready();
+
+      const contactsDb = win.MiniDB.databases.contacts;
+      const worldbookDb = win.MiniDB.databases.worldbook;
+      const masksDb = win.MiniDB.databases.masks;
+      const wechatDb = win.MiniDB.databases.wechat;
+
+      await Promise.all([
+        contactsDb.contacts.clear(),
+        contactsDb.relations.clear(),
+        contactsDb.messages.clear(),
+        contactsDb.memories.clear(),
+        contactsDb.schedules.clear(),
+        worldbookDb.groups.clear(),
+        worldbookDb.entries.clear(),
+        masksDb.masks.clear(),
+        wechatDb.configs.clear(),
+        wechatDb.stickerGroups.clear(),
+        wechatDb.stickers.clear()
+      ]);
+
+      const userMaskId = await masksDb.masks.add({
+        type: 'USER',
+        nickname: 'You',
+        name: 'You',
+        signature: 'Quiet anchor',
+        lore: 'The one Alice trusts most.'
+      });
+
+      const worldbookId = await worldbookDb.groups.add({ name: 'Pier Notes', created: Date.now() });
+      await worldbookDb.entries.add({
+        groupId: worldbookId,
+        title: 'Night Pier',
+        category: 'GLOBAL',
+        triggerType: 'ALWAYS',
+        keywords: '',
+        position: 'BEFORE',
+        content: 'Alice always returns to the old pier at night.'
+      });
+
+      const stickerGroupId = await wechatDb.stickerGroups.add({ name: 'Mood Pack', sortOrder: 0 });
+      const stickerDataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='#f7d56b'/><circle cx='42' cy='46' r='8' fill='#2c261f'/><circle cx='78' cy='46' r='8' fill='#2c261f'/><path d='M34 78c10 8 42 8 52 0' stroke='#2c261f' stroke-width='8' stroke-linecap='round' fill='none'/></svg>"
+      );
+      const stickerId = await wechatDb.stickers.add({
+        groupId: stickerGroupId,
+        sortOrder: 0,
+        url: stickerDataUrl,
+        description: 'smirk'
+      });
+
+      const aliceId = await contactsDb.contacts.add({
+        type: 'CHAR',
+        nickname: 'Alice',
+        name: 'Alice',
+        language: 'Russian',
+        signature: 'Pier side confidante',
+        lore: 'Keeps her feelings compressed and hidden.',
+        presetAssoc: `mask:${userMaskId}`,
+        worldbookAssoc: `worldbook:${worldbookId}`
+      });
+
+      await contactsDb.relations.add({
+        sourceGlobalId: `CHAR_${aliceId}`,
+        targetGlobalId: `USER_${userMaskId}`,
+        relationType: 'Partner',
+        relationDesc: 'Trusts the user with private plans.'
+      });
+
+      await win.MiniDB.ops.api.saveChatConfig({
+        provider: 'openai',
+        url: 'https://example.test/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+        temperature: 0.35,
+        context: 20
+      });
+
+      win.__testCapturedChatRequest = null;
+      win.__testReplyRequestSeen = false;
+      win.__testReplyRequestCount = 0;
+      win.fetch = async (input, init = {}) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (!String(url).includes('/chat/completions')) {
+          throw new Error('Unexpected fetch: ' + url);
+        }
+
+        const requestBody = JSON.parse(init.body);
+        const systemPrompt = requestBody && requestBody.messages && requestBody.messages[0]
+          ? String(requestBody.messages[0].content || '')
+          : '';
+
+        if (systemPrompt.includes('固定角色档案') || (systemPrompt.includes('romanizedName') && systemPrompt.includes('profession'))) {
+          return new win.Response(JSON.stringify({
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  romanizedName: 'ALICE',
+                  profession: 'Pier Confidante',
+                  mbti: 'INFJ',
+                  ideologyTag: '\u5bbf\u547d\u4e3b\u4e49',
+                  syndromeTag: '\u538b\u6291\u75c7'
+                })
+              }
+            }]
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        if (!systemPrompt.includes('[Reply Contract]')) {
+          throw new Error('Unexpected chat prompt: ' + systemPrompt.slice(0, 120));
+        }
+
+        win.__testCapturedChatRequest = requestBody;
+        win.__testReplyRequestSeen = true;
+        win.__testReplyRequestCount += 1;
+
+        const payload = {
+          messages: [
+            {
+              type: 'sticker',
+              assetId: String(stickerId),
+              packId: String(stickerGroupId),
+              description: {
+                raw: '\u0443\u0441\u043c\u0435\u0448\u043a\u0430',
+                zh: '\u5f97\u610f\u574f\u7b11',
+                sourceLang: 'ru',
+                targetLang: 'zh-CN'
+              }
+            },
+            {
+              type: 'text',
+              content: {
+                raw: '\u0423\u0432\u0438\u0434\u0438\u043c\u0441\u044f \u0443 \u043f\u0440\u0438\u0447\u0430\u043b\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f \u0432\u0435\u0447\u0435\u0440\u043e\u043c.',
+                zh: '\u4eca\u665a\u5728\u7801\u5934\u89c1\u3002',
+                sourceLang: 'ru',
+                targetLang: 'zh-CN'
+              }
+            }
+          ],
+          thought: null,
+          diary: null,
+          state: null,
+          memories: []
+        };
+
+        return new win.Response(JSON.stringify({
+          choices: [{ message: { content: JSON.stringify(payload) } }]
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      };
+
+      frame.contentWindow.postMessage({ type: 'mini-apply-theme' }, '*');
+
+      await waitFor(() => doc.querySelectorAll('#page-messages .chat-item').length === 1);
+      doc.querySelector('#page-messages .chat-item').click();
+      await waitFor(() => doc.getElementById('chat-detail-page').classList.contains('active'));
+
+      const textarea = await waitFor(() => doc.querySelector('.mini-chat-textarea'));
+      textarea.value = 'Come if you want to.';
+      textarea.dispatchEvent(new win.Event('input', { bubbles: true }));
+
+      const sendButton = doc.querySelector('#chat-detail-page .chat-input-bar > .btn-action:last-child');
+      sendButton.click();
+
+      await sleep(1800);
+      if (win.__testReplyRequestCount !== 0) {
+        throw new Error('Plain text send should not auto-trigger a role reply');
+      }
+
+      const storedAfterText = await contactsDb.messages.where('chatId').equals(aliceId).toArray();
+      if (storedAfterText.length !== 1 || storedAfterText[0].type !== 'text') {
+        throw new Error('Plain text send should only store the user text message before any auto reply');
+      }
+
+      let policyRandomCall = 0;
+      const originalRandom = win.Math.random;
+      win.Math.random = () => {
+        const stack = new win.Error().stack || '';
+        if (stack.includes('buildWechatRoleReplyPolicy')) {
+          policyRandomCall += 1;
+          return policyRandomCall === 1 ? 0.05 : 0.99;
+        }
+        return 0.42;
+      };
+
+      const extTrigger = doc.getElementById('trigger-ext');
+      if (!extTrigger) throw new Error('Extension trigger was not found');
+      extTrigger.click();
+
+      const locationTrigger = await waitFor(() => {
+        return doc.querySelector('#ext-panel [data-wechat-feature="location"]')
+          || Array.from(doc.querySelectorAll('#ext-panel .ext-item')).find((item) => {
+            const labelNode = item.querySelector('.ext-label');
+            const text = String(labelNode && labelNode.textContent || '').trim().toLowerCase();
+            return text === 'location' || text === '定位' || text === '位置';
+          });
+      });
+      locationTrigger.click();
+      await waitFor(() => doc.querySelector('#mini-wechat-location-compose-modal.show'));
+
+      const locationNameInput = doc.querySelector('.mini-wechat-location-name-input');
+      const locationDistanceInput = doc.querySelector('.mini-wechat-location-distance-input');
+      const locationDetailInput = doc.querySelector('.mini-wechat-location-detail-input');
+      const locationSendButton = doc.querySelector('#mini-wechat-location-compose-modal [data-action="send"]');
+
+      locationNameInput.value = 'Night Pier';
+      locationNameInput.dispatchEvent(new win.Event('input', { bubbles: true }));
+      locationDistanceInput.value = '380';
+      locationDistanceInput.dispatchEvent(new win.Event('input', { bubbles: true }));
+      locationDetailInput.value = 'Old pier gate, east side.';
+      locationDetailInput.dispatchEvent(new win.Event('input', { bubbles: true }));
+      locationSendButton.click();
+
+      await waitFor(() => win.__testReplyRequestCount === 1);
+      await waitFor(() => doc.querySelector('#chat-scroll .mini-wechat-sticker-card img'));
+      await waitFor(() => doc.querySelector('#chat-scroll .msg-row.received .mini-wechat-bubble-divider'));
+
+      const requestBody = win.__testCapturedChatRequest;
+      const systemPrompt = requestBody.messages[0].content;
+      const requiredPromptFragments = [
+        '"presetPersona"',
+        '"worldbooks"',
+        '"relationshipNetwork"',
+        '"temperature": 0.35',
+        '"messageCount"',
+        '"specialMessagePolicy"',
+        '"availableStickers"'
+      ];
+      for (const fragment of requiredPromptFragments) {
+        if (!systemPrompt.includes(fragment)) {
+          throw new Error('System prompt missing fragment: ' + fragment);
+        }
+      }
+
+      const translationBubble = doc.querySelector('#chat-scroll .msg-row.received .msg-bubble .mini-wechat-bubble-divider');
+      if (!translationBubble) throw new Error('Translation divider did not render for non-Chinese reply');
+
+      const translationTexts = Array.from(
+        doc.querySelectorAll('#chat-scroll .msg-row.received .msg-bubble .mini-wechat-bubble-primary')
+      ).map((node) => node.textContent.trim()).filter(Boolean);
+      if (!translationTexts.includes('\u0423\u0432\u0438\u0434\u0438\u043c\u0441\u044f \u0443 \u043f\u0440\u0438\u0447\u0430\u043b\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f \u0432\u0435\u0447\u0435\u0440\u043e\u043c.')) {
+        throw new Error('Foreign-language text did not render on the translation bubble top line');
+      }
+      if (!translationTexts.includes('\u4eca\u665a\u5728\u7801\u5934\u89c1\u3002')) {
+        throw new Error('Chinese translation did not render on the translation bubble bottom line');
+      }
+
+      const stickerImg = doc.querySelector('#chat-scroll .mini-wechat-sticker-card img');
+      if (!stickerImg || !String(stickerImg.src).startsWith('data:image/svg+xml')) {
+        throw new Error('Sticker reply did not use a real stored sticker asset');
+      }
+
+      const storedMessages = await contactsDb.messages.where('chatId').equals(aliceId).toArray();
+      const storedLocation = storedMessages.find((entry) => entry && entry.type === 'location' && entry.direction === 'sent');
+      if (!storedLocation) throw new Error('Location send was not stored before the auto reply');
+
+      const storedSticker = storedMessages.find((entry) => entry && entry.type === 'sticker');
+      if (!storedSticker) throw new Error('Sticker reply was not stored');
+      if (!storedSticker.payload || String(storedSticker.payload.assetId) !== String(stickerId)) {
+        throw new Error('Stored sticker reply lost the real asset id');
+      }
+      if (!storedSticker.payload.dataUrl) {
+        throw new Error('Stored sticker reply lost the real sticker data url');
+      }
+
+      win.Math.random = originalRandom;
+
+      setResult(true, JSON.stringify({
+        promptChecked: requiredPromptFragments,
+        textAutoReplyDisabled: true,
+        locationAutoReplyTriggered: true,
+        translationRendered: true,
+        storedStickerAssetId: storedSticker.payload.assetId,
+        storedStickerPackId: storedSticker.payload.packId,
+        replyRequestCount: win.__testReplyRequestCount,
+        replyCount: storedMessages.length
+      }, null, 2));
+    } catch (error) {
+      setResult(false, error && error.stack ? error.stack : String(error));
+    }
+  })();
+</script>
+</body>
+</html>

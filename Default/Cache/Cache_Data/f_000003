@@ -1,0 +1,710 @@
+(function (global) {
+  'use strict';
+
+  if (global.MiniDB && global.MiniDB.__ready) return;
+
+  const DexieCtor = global.Dexie;
+  if (!DexieCtor) {
+    const message = 'Dexie.js is required before db.js';
+    console.error(message);
+    global.MiniDB = { error: message, __ready: false };
+    return;
+  }
+
+  const now = () => Date.now();
+  const clone = (value) => (value == null ? value : JSON.parse(JSON.stringify(value)));
+
+  function withMeta(record, isNew) {
+    const next = { ...(record || {}) };
+    const stamp = now();
+    if (isNew && next.createdAt == null) next.createdAt = stamp;
+    next.updatedAt = stamp;
+    return next;
+  }
+
+  function createTableCrud(db, tableName) {
+    const table = db[tableName];
+
+    return {
+      table,
+      async get(id) {
+        return table.get(id);
+      },
+      async list() {
+        return table.toArray();
+      },
+      async add(record) {
+        return table.add(withMeta(record, true));
+      },
+      async put(record) {
+        return table.put(withMeta(record, record && record.createdAt == null));
+      },
+      async bulkPut(records) {
+        return table.bulkPut((records || []).map((record) => withMeta(record, record && record.createdAt == null)));
+      },
+      async update(id, changes) {
+        return table.update(id, withMeta(changes, false));
+      },
+      async remove(id) {
+        return table.delete(id);
+      },
+      async clear() {
+        return table.clear();
+      },
+      async count() {
+        return table.count();
+      },
+      async whereEquals(index, value) {
+        return table.where(index).equals(value).toArray();
+      }
+    };
+  }
+
+  function createKeyValueOps(table, valueKey) {
+    return {
+      async get(id) {
+        const record = await table.get(id);
+        return record ? record[valueKey] : null;
+      },
+      async getRecord(id) {
+        return table.get(id);
+      },
+      async set(id, value) {
+        return table.put(withMeta({ id, [valueKey]: value }, false));
+      },
+      async put(record) {
+        return table.put(withMeta(record, false));
+      },
+      async remove(id) {
+        return table.delete(id);
+      },
+      async list() {
+        return table.toArray();
+      },
+      async clear() {
+        return table.clear();
+      }
+    };
+  }
+
+  function normalizeScopedId(currentContactId, fieldName) {
+    const value = typeof currentContactId === 'string' ? currentContactId.trim() : currentContactId;
+    if (value == null || value === '') {
+      throw new Error(`${fieldName || 'currentContactId'} is required`);
+    }
+    return value;
+  }
+
+  function sanitizePlainText(value) {
+    return String(value == null ? '' : value).replace(/\r/g, '').trim();
+  }
+
+  function extractMessagePlainText(message) {
+    if (!message || typeof message !== 'object') return '';
+    const payload = message.payload && typeof message.payload === 'object' ? message.payload : {};
+    const content = payload.content && typeof payload.content === 'object' ? payload.content : null;
+    const quote = payload.quote && typeof payload.quote === 'object' ? payload.quote : null;
+    const snapshot = payload.snapshot && typeof payload.snapshot === 'object' ? payload.snapshot : null;
+    const localized = (value) => {
+      if (value && typeof value === 'object') return sanitizePlainText(value.raw || value.zh || value.text);
+      return sanitizePlainText(value);
+    };
+    const joinParts = (parts) => parts.map((part) => sanitizePlainText(part)).filter(Boolean).join(' ');
+
+    const rawType = sanitizePlainText(message.type).toLowerCase();
+    if (content) return localized(content);
+    if (rawType === 'quote') return localized(content) || (quote ? extractMessagePlainText(quote) : '');
+    if (rawType === 'recall') return joinParts([
+      payload.operator === 'self' ? '你撤回了一条消息' : '对方撤回了一条消息',
+      snapshot ? extractMessagePlainText(snapshot) : ''
+    ]);
+    if (rawType === 'voice') return localized(payload.transcript);
+    if (rawType === 'sticker') return localized(payload.description);
+    if (rawType === 'photo' || rawType === 'image') return localized(payload.description);
+    if (rawType === 'location') return joinParts([localized(payload.name), localized(payload.address)]);
+    if (rawType === 'transfer' || rawType === 'gift' || rawType === 'takeout') return localized(payload.note);
+    if (rawType === 'red_packet') return localized(payload.greeting);
+    if (rawType === 'call' || rawType === 'video') return sanitizePlainText(payload.status);
+    if (quote) return extractMessagePlainText(quote);
+    return sanitizePlainText(message.text || message.content);
+  }
+
+  function cloneArray(value) {
+    return Array.isArray(value) ? value.map((item) => clone(item)) : [];
+  }
+
+  function sortByTimestampDesc(records) {
+    return (records || []).slice().sort((left, right) => {
+      const leftValue = Number(left && (left.updatedAt || left.timestamp || left.createdAt)) || 0;
+      const rightValue = Number(right && (right.updatedAt || right.timestamp || right.createdAt)) || 0;
+      return rightValue - leftValue;
+    });
+  }
+
+  function createRoleUniverseOps(db) {
+    const messageTable = db.messages;
+    const memoryTable = db.memories;
+    const scheduleTable = db.schedules;
+
+    async function getMessage(currentContactId, messageRecordId) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      if (messageRecordId == null || messageRecordId === '') return null;
+      const direct = await messageTable.get(messageRecordId);
+      if (direct && direct.chatId === chatId) return direct;
+      const rows = await messageTable.where('chatId').equals(chatId).toArray();
+      return rows.find((row) => row && row.messageId === messageRecordId) || null;
+    }
+
+    async function loadMessages(currentContactId, options = {}) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      const rows = await messageTable.where('chatId').equals(chatId).toArray();
+      const sorted = rows.sort((left, right) => {
+        const leftValue = Number(left && left.timestamp) || Number(left && left.createdAt) || 0;
+        const rightValue = Number(right && right.timestamp) || Number(right && right.createdAt) || 0;
+        return leftValue - rightValue;
+      });
+      const limit = Number(options.limit);
+      return Number.isFinite(limit) && limit > 0 ? sorted.slice(-limit) : sorted;
+    }
+
+    async function getLatestMessage(currentContactId) {
+      const rows = await loadMessages(currentContactId, { limit: 1 });
+      return rows.length ? rows[rows.length - 1] : null;
+    }
+
+    async function saveMessage(currentContactId, message) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      const text = extractMessagePlainText(message);
+      if (!text) return null;
+      const direction = message && message.direction === 'received'
+        ? 'received'
+        : (message && message.type === 'received' ? 'received' : 'sent');
+      const type = sanitizePlainText(message && message.type);
+      const timestamp = Number(message && message.timestamp);
+      const record = {
+        ...(message && typeof message === 'object' ? clone(message) : {}),
+        chatId,
+        direction,
+        type: type && type !== 'received' && type !== 'sent' ? type : 'text',
+        text,
+        timestamp: Number.isFinite(timestamp) && timestamp > 0 ? timestamp : now()
+      };
+      return messageTable.add(withMeta(record, true));
+    }
+
+    async function updateMessage(currentContactId, messageRecordId, message) {
+      const existing = await getMessage(currentContactId, messageRecordId);
+      if (!existing) return null;
+      const next = {
+        ...clone(existing),
+        ...(message && typeof message === 'object' ? clone(message) : {})
+      };
+      const text = extractMessagePlainText(next);
+      if (!text) return null;
+      const timestamp = Number(next.timestamp);
+      next.chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      next.direction = next.direction === 'received' || next.type === 'received' ? 'received' : 'sent';
+      if (!next.type || next.type === 'sent' || next.type === 'received') next.type = 'text';
+      next.text = text;
+      next.timestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : now();
+      await messageTable.put(withMeta(next, false));
+      return next;
+    }
+
+    async function deleteMessage(currentContactId, messageRecordId) {
+      const existing = await getMessage(currentContactId, messageRecordId);
+      if (!existing) return false;
+      await messageTable.delete(existing.id);
+      return true;
+    }
+
+    async function deleteMessages(currentContactId, messageRecordIds = []) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      const wanted = new Set((messageRecordIds || []).map((value) => String(value)).filter(Boolean));
+      if (!wanted.size) return 0;
+      const rows = await messageTable.where('chatId').equals(chatId).toArray();
+      const targets = rows.filter((row) => row && (wanted.has(String(row.id)) || (row.messageId && wanted.has(String(row.messageId)))));
+      await Promise.all(targets.map((row) => messageTable.delete(row.id)));
+      return targets.length;
+    }
+
+    async function loadMemories(currentContactId, options = {}) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      const rows = await memoryTable.where('chatId').equals(chatId).toArray();
+      const sorted = sortByTimestampDesc(rows);
+      const limit = Number(options.limit);
+      return Number.isFinite(limit) && limit > 0 ? sorted.slice(0, limit) : sorted;
+    }
+
+    async function saveMemory(currentContactId, memory) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      const content = sanitizePlainText(memory && memory.content);
+      if (!content) return null;
+      const importance = Number(memory && memory.importance);
+      const record = {
+        ...(memory && typeof memory === 'object' ? clone(memory) : {}),
+        chatId,
+        kind: sanitizePlainText(memory && memory.kind) || 'long_term',
+        title: sanitizePlainText(memory && memory.title),
+        content,
+        summary: sanitizePlainText(memory && memory.summary),
+        source: sanitizePlainText(memory && memory.source) || 'assistant',
+        importance: Number.isFinite(importance) ? importance : 0.5,
+        tags: cloneArray(memory && memory.tags)
+      };
+      return memoryTable.add(withMeta(record, true));
+    }
+
+    async function clearMemories(currentContactId) {
+      const chatId = normalizeScopedId(currentContactId, 'currentContactId');
+      const rows = await memoryTable.where('chatId').equals(chatId).toArray();
+      await Promise.all(rows.map((row) => memoryTable.delete(row.id)));
+      return rows.length;
+    }
+
+    async function loadSchedules(currentContactId, options = {}) {
+      const contactId = normalizeScopedId(currentContactId, 'currentContactId');
+      let rows = await scheduleTable.where('contactId').equals(contactId).toArray();
+      const kind = sanitizePlainText(options.kind);
+      if (kind) rows = rows.filter((row) => sanitizePlainText(row && row.kind) === kind);
+      const sorted = sortByTimestampDesc(rows);
+      const limit = Number(options.limit);
+      return Number.isFinite(limit) && limit > 0 ? sorted.slice(0, limit) : sorted;
+    }
+
+    async function saveSchedule(currentContactId, schedule) {
+      const contactId = normalizeScopedId(currentContactId, 'currentContactId');
+      const kind = sanitizePlainText(schedule && schedule.kind);
+      if (!kind) return null;
+      const probability = Number(schedule && schedule.probability);
+      const record = {
+        ...(schedule && typeof schedule === 'object' ? clone(schedule) : {}),
+        contactId,
+        kind,
+        probability: Number.isFinite(probability) ? Math.max(0, Math.min(1, probability)) : null
+      };
+      return scheduleTable.add(withMeta(record, true));
+    }
+
+    async function saveThought(currentContactId, thought) {
+      const content = sanitizePlainText(thought && thought.content);
+      if (!content) return null;
+      return saveSchedule(currentContactId, {
+        kind: 'thought',
+        ...clone(thought),
+        thought: {
+          content,
+          summary: sanitizePlainText(thought && thought.summary) || content,
+          mbti: sanitizePlainText(thought && thought.mbti),
+          trait: sanitizePlainText(thought && thought.trait),
+          specialTag: sanitizePlainText(thought && thought.specialTag),
+          mood: sanitizePlainText(thought && thought.mood),
+          focus: sanitizePlainText(thought && thought.focus),
+          restraint: Number(thought && thought.restraint),
+          tension: Number(thought && thought.tension),
+          closeness: Number(thought && thought.closeness),
+          probability: Number(thought && thought.probability)
+        },
+        summary: sanitizePlainText(thought && thought.summary) || content
+      });
+    }
+
+    async function saveDiary(currentContactId, diary) {
+      const title = sanitizePlainText(diary && diary.title);
+      const content = sanitizePlainText(diary && diary.content);
+      if (!title && !content) return null;
+      return saveSchedule(currentContactId, {
+        kind: 'diary',
+        ...clone(diary),
+        diary: {
+          title,
+          content,
+          preview: sanitizePlainText(diary && diary.preview) || content,
+          location: sanitizePlainText(diary && diary.location),
+          mood: sanitizePlainText(diary && diary.mood),
+          tags: cloneArray(diary && diary.tags),
+          probability: Number(diary && diary.probability),
+          writtenAt: diary && diary.writtenAt != null ? diary.writtenAt : now()
+        },
+        summary: sanitizePlainText(diary && diary.preview) || content || title
+      });
+    }
+
+    async function saveState(currentContactId, state) {
+      const summary = sanitizePlainText(state && state.summary);
+      if (!summary) return null;
+      return saveSchedule(currentContactId, {
+        kind: 'state',
+        ...clone(state),
+        state: {
+          summary,
+          mood: sanitizePlainText(state && state.mood),
+          phase: sanitizePlainText(state && state.phase),
+          restraint: Number(state && state.restraint),
+          tension: Number(state && state.tension),
+          closeness: Number(state && state.closeness),
+          volatility: Number(state && state.volatility)
+        },
+        summary
+      });
+    }
+
+    async function clearSchedules(currentContactId, options = {}) {
+      const contactId = normalizeScopedId(currentContactId, 'currentContactId');
+      const kind = sanitizePlainText(options.kind);
+      let rows = await scheduleTable.where('contactId').equals(contactId).toArray();
+      if (kind) rows = rows.filter((row) => sanitizePlainText(row && row.kind) === kind);
+      await Promise.all(rows.map((row) => scheduleTable.delete(row.id)));
+      return rows.length;
+    }
+
+    async function deleteContactUniverse(currentContactId) {
+      const scopedId = normalizeScopedId(currentContactId, 'currentContactId');
+      const [messages, memories, schedules] = await Promise.all([
+        messageTable.where('chatId').equals(scopedId).toArray(),
+        memoryTable.where('chatId').equals(scopedId).toArray(),
+        scheduleTable.where('contactId').equals(scopedId).toArray()
+      ]);
+      await Promise.all([
+        Promise.all(messages.map((row) => messageTable.delete(row.id))),
+        Promise.all(memories.map((row) => memoryTable.delete(row.id))),
+        Promise.all(schedules.map((row) => scheduleTable.delete(row.id)))
+      ]);
+      return {
+        messages: messages.length,
+        memories: memories.length,
+        schedules: schedules.length
+      };
+    }
+
+    return {
+      loadMessages,
+      getMessage,
+      getLatestMessage,
+      saveMessage,
+      updateMessage,
+      deleteMessage,
+      deleteMessages,
+      loadMemories,
+      saveMemory,
+      clearMemories,
+      loadSchedules,
+      saveSchedule,
+      saveThought,
+      saveDiary,
+      saveState,
+      clearSchedules,
+      deleteContactUniverse
+    };
+  }
+
+  const themeDb = new DexieCtor('UIDesignDB');
+  themeDb.version(2).stores({
+    placeholders: 'id, dataUrl',
+    texts: 'id, value'
+  });
+  themeDb.version(3).stores({
+    placeholders: 'id, dataUrl',
+    texts: 'id, value',
+    settings: 'id, value'
+  });
+
+  const wechatDb = new DexieCtor('WeChatPureDB');
+  wechatDb.version(2).stores({
+    configs: 'id, value',
+    images: 'id, dataUrl'
+  });
+  wechatDb.version(3).stores({
+    configs: 'id, value',
+    images: 'id, dataUrl',
+    stickerGroups: '++id, sortOrder, createdAt, updatedAt',
+    stickers: '++id, groupId, sortOrder, createdAt, updatedAt, [groupId+sortOrder]'
+  });
+
+  const wechatChatDb = new DexieCtor('ChatAppDB');
+  wechatChatDb.version(1).stores({
+    avatars: 'id, dataUrl'
+  });
+
+  const anniversaryDb = new DexieCtor('AnniversaryProDB');
+  anniversaryDb.version(2).stores({
+    events: '++id, title, date, identity, type, countMethod, isPinned, targetChar'
+  });
+
+  const novelDb = new DexieCtor('NovelUIDB_Premium');
+  novelDb.version(1).stores({
+    texts: 'id, value',
+    images: 'id, dataUrl'
+  });
+
+  const masksDb = new DexieCtor('MasksDB');
+  masksDb.version(1).stores({
+    masks: '++id, type, nickname, name, gender, account, signature, lore'
+  });
+
+  const worldbookDb = new DexieCtor('WorldbookDB');
+  worldbookDb.version(1).stores({
+    groups: '++id, name, created',
+    entries: '++id, groupId, title, category, triggerType, keywords, position, content'
+  });
+
+  const contactsDb = new DexieCtor('ContactsExtDB');
+  contactsDb.version(3).stores({
+    contacts: '++id, type, nickname, name, gender, account, signature, lore, presetAssoc, worldbookAssoc, language',
+    relations: '++id, sourceGlobalId, targetGlobalId, relationDesc'
+  });
+  contactsDb.version(4).stores({
+    contacts: '++id, type, nickname, name, gender, account, signature, lore, presetAssoc, worldbookAssoc, language',
+    relations: '++id, sourceGlobalId, targetGlobalId, relationType, relationDesc'
+  }).upgrade((tx) => {
+    return tx.table('relations').toCollection().modify((rel) => {
+      if (!rel.relationType && rel.relationDesc) {
+        rel.relationType = rel.relationDesc;
+        rel.relationDesc = '';
+      }
+    });
+  });
+  contactsDb.version(5).stores({
+    contacts: '++id, type, nickname, name, gender, account, signature, lore, presetAssoc, worldbookAssoc, language',
+    relations: '++id, sourceGlobalId, targetGlobalId, relationType, relationDesc',
+    messages: '++id, chatId, type, timestamp, createdAt, updatedAt, [chatId+timestamp]',
+    memories: '++id, chatId, kind, importance, createdAt, updatedAt, [chatId+updatedAt], [chatId+kind]',
+    schedules: '++id, contactId, kind, probability, createdAt, updatedAt, [contactId+updatedAt], [contactId+kind]'
+  });
+
+  const settingsDb = new DexieCtor('MiniSettingsDB');
+  settingsDb.version(1).stores({
+    configs: 'id, value, updatedAt'
+  });
+
+  const systemDb = new DexieCtor('MiniSystemDB');
+  systemDb.version(1).stores({
+    popups: '++id, scope, name, active, createdAt, updatedAt',
+    notifications: '++id, scope, type, title, read, createdAt, updatedAt'
+  });
+
+  const theme = {
+    placeholders: createTableCrud(themeDb, 'placeholders'),
+    texts: createTableCrud(themeDb, 'texts'),
+    settings: createTableCrud(themeDb, 'settings'),
+    getPlaceholder: (id) => createKeyValueOps(themeDb.placeholders, 'dataUrl').get(id),
+    setPlaceholder: (id, dataUrl) => createKeyValueOps(themeDb.placeholders, 'dataUrl').set(id, dataUrl),
+    deletePlaceholder: (id) => themeDb.placeholders.delete(id),
+    getText: (id) => createKeyValueOps(themeDb.texts, 'value').get(id),
+    setText: (id, value) => createKeyValueOps(themeDb.texts, 'value').set(id, value),
+    deleteText: (id) => themeDb.texts.delete(id),
+    getSetting: (id) => createKeyValueOps(themeDb.settings, 'value').get(id),
+    setSetting: (id, value) => createKeyValueOps(themeDb.settings, 'value').set(id, value),
+    deleteSetting: (id) => themeDb.settings.delete(id)
+  };
+
+  const wechat = {
+    configs: createTableCrud(wechatDb, 'configs'),
+    images: createTableCrud(wechatDb, 'images'),
+    stickerGroups: createTableCrud(wechatDb, 'stickerGroups'),
+    stickers: createTableCrud(wechatDb, 'stickers'),
+    avatars: createTableCrud(wechatChatDb, 'avatars'),
+    getConfig: (id) => createKeyValueOps(wechatDb.configs, 'value').get(id),
+    setConfig: (id, value) => createKeyValueOps(wechatDb.configs, 'value').set(id, value),
+    getImage: (id) => createKeyValueOps(wechatDb.images, 'dataUrl').get(id),
+    setImage: (id, dataUrl) => createKeyValueOps(wechatDb.images, 'dataUrl').set(id, dataUrl),
+    getAvatar: (id) => createKeyValueOps(wechatChatDb.avatars, 'dataUrl').get(id),
+    setAvatar: (id, dataUrl) => createKeyValueOps(wechatChatDb.avatars, 'dataUrl').set(id, dataUrl)
+  };
+
+  const anniversary = {
+    events: createTableCrud(anniversaryDb, 'events'),
+    listEvents: () => anniversaryDb.events.toArray(),
+    getEvent: (id) => anniversaryDb.events.get(id),
+    addEvent: (event) => anniversaryDb.events.add(withMeta(event, true)),
+    updateEvent: (id, changes) => anniversaryDb.events.update(id, withMeta(changes, false)),
+    deleteEvent: (id) => anniversaryDb.events.delete(id)
+  };
+
+  const novel = {
+    texts: createTableCrud(novelDb, 'texts'),
+    images: createTableCrud(novelDb, 'images'),
+    getText: (id) => createKeyValueOps(novelDb.texts, 'value').get(id),
+    setText: (id, value) => createKeyValueOps(novelDb.texts, 'value').set(id, value),
+    getImage: (id) => createKeyValueOps(novelDb.images, 'dataUrl').get(id),
+    setImage: (id, dataUrl) => createKeyValueOps(novelDb.images, 'dataUrl').set(id, dataUrl)
+  };
+
+  const masks = {
+    masks: createTableCrud(masksDb, 'masks'),
+    listByType: (type) => masksDb.masks.where('type').equals(type).toArray(),
+    getMask: (id) => masksDb.masks.get(id),
+    addMask: (mask) => masksDb.masks.add(withMeta(mask, true)),
+    updateMask: (id, changes) => masksDb.masks.update(id, withMeta(changes, false)),
+    deleteMask: (id) => masksDb.masks.delete(id)
+  };
+
+  const worldbook = {
+    groups: createTableCrud(worldbookDb, 'groups'),
+    entries: createTableCrud(worldbookDb, 'entries'),
+    listGroups: () => worldbookDb.groups.orderBy('created').reverse().toArray(),
+    addGroup: (group) => worldbookDb.groups.add(withMeta(group, true)),
+    deleteGroup: async (id) => {
+      await worldbookDb.transaction('rw', worldbookDb.groups, worldbookDb.entries, async () => {
+        await worldbookDb.groups.delete(id);
+        await worldbookDb.entries.where('groupId').equals(id).delete();
+      });
+    },
+    listEntries: (groupId) => worldbookDb.entries.where('groupId').equals(groupId).toArray(),
+    getEntry: (id) => worldbookDb.entries.get(id),
+    addEntry: (entry) => worldbookDb.entries.add(withMeta(entry, true)),
+    updateEntry: (id, changes) => worldbookDb.entries.update(id, withMeta(changes, false)),
+    deleteEntry: (id) => worldbookDb.entries.delete(id)
+  };
+
+  const contacts = {
+    contacts: createTableCrud(contactsDb, 'contacts'),
+    relations: createTableCrud(contactsDb, 'relations'),
+    messages: createTableCrud(contactsDb, 'messages'),
+    memories: createTableCrud(contactsDb, 'memories'),
+    schedules: createTableCrud(contactsDb, 'schedules'),
+    listContacts: () => contactsDb.contacts.toArray(),
+    listContactsByType: (type) => contactsDb.contacts.where('type').equals(type).toArray(),
+    getContact: (id) => contactsDb.contacts.get(id),
+    addContact: (contact) => contactsDb.contacts.add(withMeta(contact, true)),
+    updateContact: (id, changes) => contactsDb.contacts.update(id, withMeta(changes, false)),
+    deleteContact: async (id) => {
+      await createRoleUniverseOps(contactsDb).deleteContactUniverse(id);
+      return contactsDb.contacts.delete(id);
+    },
+    listRelations: () => contactsDb.relations.toArray(),
+    getRelation: (id) => contactsDb.relations.get(id),
+    addRelation: (relation) => contactsDb.relations.add(withMeta(relation, true)),
+    updateRelation: (id, changes) => contactsDb.relations.update(id, withMeta(changes, false)),
+    deleteRelation: (id) => contactsDb.relations.delete(id),
+    ...createRoleUniverseOps(contactsDb)
+  };
+
+  const popup = {
+    popups: createTableCrud(systemDb, 'popups'),
+    list: () => systemDb.popups.toArray(),
+    get: (id) => systemDb.popups.get(id),
+    create: (record) => systemDb.popups.add(withMeta(record, true)),
+    update: (id, changes) => systemDb.popups.update(id, withMeta(changes, false)),
+    remove: (id) => systemDb.popups.delete(id),
+    clear: () => systemDb.popups.clear()
+  };
+
+  const notification = {
+    notifications: createTableCrud(systemDb, 'notifications'),
+    list: () => systemDb.notifications.toArray(),
+    get: (id) => systemDb.notifications.get(id),
+    create: (record) => systemDb.notifications.add(withMeta({ read: false, ...(record || {}) }, true)),
+    update: (id, changes) => systemDb.notifications.update(id, withMeta(changes, false)),
+    markRead: (id) => systemDb.notifications.update(id, withMeta({ read: true }, false)),
+    remove: (id) => systemDb.notifications.delete(id),
+    clear: () => systemDb.notifications.clear()
+  };
+
+  const configKv = createKeyValueOps(settingsDb.configs, 'value');
+  let apiMigrationPromise = null;
+
+  async function migrateApiLocalStorage() {
+    if (apiMigrationPromise) return apiMigrationPromise;
+    apiMigrationPromise = (async () => {
+      if (!global.localStorage) return;
+      const keys = ['mini.api.chat', 'mini.api.voice'];
+      for (const key of keys) {
+        const raw = global.localStorage.getItem(key);
+        if (!raw) continue;
+        const existing = await settingsDb.configs.get(key);
+        if (!existing) {
+          try {
+            await configKv.set(key, JSON.parse(raw));
+          } catch (error) {
+            console.warn('Failed to migrate localStorage config', key, error);
+            continue;
+          }
+        }
+        try {
+          global.localStorage.removeItem(key);
+        } catch (error) {
+          console.warn('Failed to remove migrated localStorage config', key, error);
+        }
+      }
+    })();
+    return apiMigrationPromise;
+  }
+
+  const api = {
+    configs: createTableCrud(settingsDb, 'configs'),
+    async getConfig(id) {
+      await migrateApiLocalStorage();
+      return configKv.get(id);
+    },
+    async setConfig(id, value) {
+      await migrateApiLocalStorage();
+      return configKv.set(id, clone(value));
+    },
+    async deleteConfig(id) {
+      return settingsDb.configs.delete(id);
+    },
+    getChatConfig() {
+      return api.getConfig('mini.api.chat');
+    },
+    saveChatConfig(value) {
+      return api.setConfig('mini.api.chat', value);
+    },
+    getVoiceConfig() {
+      return api.getConfig('mini.api.voice');
+    },
+    saveVoiceConfig(value) {
+      return api.setConfig('mini.api.voice', value);
+    },
+    migrateLocalStorage: migrateApiLocalStorage
+  };
+
+  const databases = {
+    theme: themeDb,
+    wechat: wechatDb,
+    wechatChat: wechatChatDb,
+    anniversary: anniversaryDb,
+    novel: novelDb,
+    masks: masksDb,
+    worldbook: worldbookDb,
+    contacts: contactsDb,
+    settings: settingsDb,
+    system: systemDb
+  };
+
+  const ops = {
+    theme,
+    wechat,
+    anniversary,
+    novel,
+    masks,
+    worldbook,
+    contacts,
+    api,
+    popup,
+    notification
+  };
+
+  async function ready() {
+    await Promise.all(Object.values(databases).map((db) => db.open()));
+    await migrateApiLocalStorage();
+    return apiRoot;
+  }
+
+  const apiRoot = {
+    Dexie: DexieCtor,
+    databases,
+    ops,
+    modules: ops,
+    ready,
+    createTableCrud,
+    __ready: true
+  };
+
+  global.MiniDB = apiRoot;
+  global.__miniDB = apiRoot;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = apiRoot;
+  }
+})(typeof window !== 'undefined' ? window : globalThis);

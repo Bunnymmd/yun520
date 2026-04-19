@@ -1,0 +1,140 @@
+:root {
+  --mini-device-width: 440px;
+  --mini-device-height: 956px;
+  --mini-shell-frame-padding: 14px;
+  --mini-shell-width: calc(var(--mini-device-width) + (var(--mini-shell-frame-padding) * 2));
+  --mini-shell-height: calc(var(--mini-device-height) + (var(--mini-shell-frame-padding) * 2));
+  --mini-shell-scale: 1;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #f8f0f3;
+  overscroll-behavior: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+.mini-device-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  overflow: hidden;
+  background: #f8f0f3;
+}
+
+.mini-boot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  background: #f8f0f3;
+  z-index: 1;
+}
+
+.mini-boot.hidden {
+  display: none;
+}
+
+.mini-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border: 0;
+  display: none;
+  background: #f8f0f3;
+}
+
+.mini-frame.active {
+  display: block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html,
+  body {
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 100%;
+    padding: 24px;
+    background:
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 34%),
+      linear-gradient(180deg, #f7eef1 0%, #eee3e9 100%);
+  }
+
+  .mini-device-shell {
+    position: relative;
+    flex: none;
+    width: var(--mini-shell-width);
+    height: var(--mini-shell-height);
+    padding: var(--mini-shell-frame-padding);
+    border-radius: 42px;
+    background: rgba(255, 255, 255, 0.54);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 24px 70px rgba(114, 93, 104, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transform: scale(var(--mini-shell-scale));
+    transform-origin: center center;
+  }
+
+  .mini-device-shell::before {
+    content: none;
+  }
+
+  .mini-device-shell::after {
+    content: none;
+  }
+
+  .mini-shell {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    flex: none;
+    border-radius: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.52);
+    box-shadow: 0 16px 40px rgba(61, 43, 52, 0.16);
+  }
+
+  .mini-boot,
+  .mini-frame {
+    border-radius: 28px;
+  }
+}

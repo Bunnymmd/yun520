@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anniversary Isolation Smoke</title>
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    font: 14px/1.5 sans-serif;
+    background: #f6f6f6;
+    color: #111;
+  }
+  #result {
+    white-space: pre-wrap;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  iframe {
+    width: 430px;
+    height: 932px;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+  }
+</style>
+</head>
+<body>
+<div id="result">Running anniversary isolation smoke test...</div>
+<iframe id="app-frame" src="/APP/anniversary/anniversary.html"></iframe>
+<script>
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitFor(predicate, timeout = 15000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const value = predicate();
+      if (value) return value;
+      await sleep(50);
+    }
+    throw new Error('Timed out waiting for page state');
+  }
+
+  function setResult(ok, message) {
+    const result = document.getElementById('result');
+    result.textContent = (ok ? 'PASS\n' : 'FAIL\n') + message;
+    result.dataset.status = ok ? 'pass' : 'fail';
+  }
+
+  window.addEventListener('load', async () => {
+    try {
+      const frame = document.getElementById('app-frame');
+      await waitFor(() => {
+        const win = frame.contentWindow;
+        return win && win.MiniDB && win.MiniDB.__ready && typeof win.renderUI === 'function';
+      });
+
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      await win.MiniDB.ready();
+
+      const contactsDb = win.MiniDB.databases.contacts;
+      const anniversaryDb = win.MiniDB.databases.anniversary;
+      const worldbookDb = win.MiniDB.databases.worldbook;
+
+      await Promise.all([
+        contactsDb.relations.clear(),
+        contactsDb.messages.clear(),
+        contactsDb.memories.clear(),
+        contactsDb.schedules.clear(),
+        contactsDb.contacts.clear(),
+        anniversaryDb.events.clear(),
+        worldbookDb.groups.clear(),
+        worldbookDb.entries.clear()
+      ]);
+
+      const wbMainId = await worldbookDb.groups.add({ name: 'Main Lore', created: Date.now() });
+      const wbSideId = await worldbookDb.groups.add({ name: 'City Rules', created: Date.now() + 1 });
+      await worldbookDb.entries.bulkAdd([
+        { groupId: wbMainId, title: 'Bond', category: 'GLOBAL', triggerType: 'ALWAYS', keywords: '', position: 'BEFORE', content: 'Alice remembers promises.' },
+        { groupId: wbSideId, title: 'City', category: 'GLOBAL', triggerType: 'ALWAYS', keywords: '', position: 'BEFORE', content: 'The city is full of shared routines.' }
+      ]);
+
+      const aliceId = await contactsDb.contacts.add({
+        type: 'CHAR',
+        nickname: 'Alice',
+        name: 'Alice',
+        worldbookAssoc: `worldbook:${wbMainId}|worldbook:${wbSideId}`
+      });
+      const bobId = await contactsDb.contacts.add({ type: 'NPC', nickname: 'Bob', name: 'Bob' });
+      await contactsDb.schedules.add({
+        contactId: aliceId,
+        kind: 'thought',
+        summary: 'Existing WeChat thought',
+        thought: { content: 'Existing WeChat thought' }
+      });
+      await win.MiniDB.ops.api.saveChatConfig({
+        provider: 'openai',
+        url: 'https://example.test/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+        temperature: 0.2,
+        context: 20
+      });
+      win.fetch = async (input) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (String(url).includes('/chat/completions')) {
+          const payload = {
+            anniversaries: [
+              { title: '一起记住 Alice 的那句晚安', date: '2026-04-05', type: 'Memory', countMethod: 'Up' },
+              { title: '下次和 Alice 去老地方散步', date: '2026-05-02', type: 'Target', countMethod: 'Down' },
+              { title: 'Alice 第一次认真提起未来', date: '2026-03-12', type: 'Memory', countMethod: 'Up' },
+              { title: '为 Alice 留好的生日提醒', date: '2026-08-08', type: 'Birthday', countMethod: 'Down' }
+            ],
+            thought: {
+              content: '她其实把那点偏爱藏得很深，只肯在你转身以后反复确认。',
+              summary: '她在克制里反复确认偏爱。',
+              mbti: 'INFJ',
+              trait: '认真',
+              specialTag: '偏爱',
+              mood: '在意',
+              focus: '靠近',
+              probability: 0.82,
+              restraint: 0.58,
+              tension: 0.37,
+              closeness: 0.74
+            }
+          };
+          return new win.Response(JSON.stringify({
+            choices: [{ message: { content: JSON.stringify(payload) } }]
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        throw new Error('Unexpected fetch: ' + url);
+      };
+
+      await anniversaryDb.events.bulkAdd([
+        {
+          title: 'Alice Exclusive',
+          date: '2026-04-10',
+          type: 'Memory',
+          countMethod: 'Up',
+          identity: 'CHAR',
+          targetChar: 'Alice',
+          isPinned: true
+        },
+        {
+          title: 'Me only',
+          date: '2026-04-14',
+          type: 'Memory',
+          countMethod: 'Up',
+          identity: 'ME',
+          targetChar: '',
+          isPinned: true
+        },
+        {
+          title: 'Shared Alice Plan',
+          date: '2026-04-18',
+          type: 'Target',
+          countMethod: 'Up',
+          identity: 'ME',
+          targetChar: 'Alice',
+          targetContactId: aliceId,
+          targetContactType: 'CHAR',
+          isPinned: false
+        }
+      ]);
+
+      await win.renderUI();
+      await sleep(250);
+
+      const meText = doc.getElementById('events-container-me').innerText;
+      if (!meText.includes('Me only')) throw new Error('ME view did not render the ME event');
+      if (!meText.includes('Shared Alice Plan')) throw new Error('ME view did not retain the shared ME event');
+      if (meText.includes('Alice Exclusive')) throw new Error('ME view still contains the TA event');
+
+      doc.querySelectorAll('.dock-item')[1].click();
+      await sleep(250);
+
+      const selectorNames = Array.from(doc.querySelectorAll('#char-selector .char-name')).map((node) => node.textContent.trim());
+      if (!selectorNames.includes('Alice') || !selectorNames.includes('Bob')) {
+        throw new Error('TA overview did not load contacts from Contacts DB');
+      }
+
+      const overviewText = doc.getElementById('view-ta').innerText;
+      if (overviewText.includes('With Alice') || overviewText.includes('Me only')) {
+        throw new Error('TA overview should only show contacts before entering detail');
+      }
+
+      const eventsAfterSync = await anniversaryDb.events.toArray();
+      const aliceEvent = eventsAfterSync.find((event) => event.title === 'Alice Exclusive');
+      if (!aliceEvent) throw new Error('Alice event disappeared during sync');
+      if (String(aliceEvent.targetContactId) !== String(aliceId) || aliceEvent.targetContactType !== 'CHAR') {
+        throw new Error('Legacy Alice event was not migrated to contact linkage');
+      }
+
+      win.openTaContactDetail(aliceId);
+      await sleep(250);
+      const aliceText = doc.getElementById('events-container-ta').innerText;
+      if (!aliceText.includes('Alice Exclusive')) throw new Error('Alice detail did not render Alice event');
+      if (!aliceText.includes('Shared Alice Plan')) throw new Error('Alice detail did not render the shared ME event');
+      if (aliceText.includes('Me only')) throw new Error('Alice detail still contains the ME-only event');
+
+      await win.refreshSelectedTaContact();
+      await sleep(250);
+
+      const refreshedEvents = await anniversaryDb.events.toArray();
+      const generatedAliceEvents = refreshedEvents.filter((event) =>
+        event && event.isSystemGenerated && String(event.generatedForContactId) === String(aliceId)
+      );
+      if (generatedAliceEvents.length < 4 || generatedAliceEvents.length > 6) {
+        throw new Error('Refresh did not generate 4-6 isolated anniversaries for Alice');
+      }
+      if (generatedAliceEvents.some((event) => String(event.targetContactId) !== String(aliceId))) {
+        throw new Error('Generated Alice anniversaries leaked to another contact scope');
+      }
+
+      const aliceSchedules = await contactsDb.schedules.where('contactId').equals(aliceId).toArray();
+      const wechatThought = aliceSchedules.find((entry) => entry.kind === 'thought');
+      const anniversaryThought = aliceSchedules.find((entry) => entry.kind === 'anniversary_thought');
+      if (!wechatThought) throw new Error('Existing contact thought was overwritten by anniversary refresh');
+      if (!anniversaryThought) throw new Error('Anniversary thought was not generated in isolated schedule scope');
+
+      doc.querySelectorAll('.dock-item')[0].click();
+      await sleep(250);
+      const meTextAfterRefresh = doc.getElementById('events-container-me').innerText;
+      const leakedGeneratedTitle = generatedAliceEvents.find((event) => meTextAfterRefresh.includes(event.title));
+      if (leakedGeneratedTitle) {
+        throw new Error('Generated TA anniversaries leaked into ME view');
+      }
+
+      doc.querySelectorAll('.dock-item')[1].click();
+      await sleep(250);
+      win.openTaContactDetail(bobId);
+      await sleep(250);
+      const bobText = doc.getElementById('events-container-ta').innerText;
+      if (!bobText.includes('Bob') || !bobText.includes('点击右下角刷新生成')) {
+        throw new Error('Bob detail empty state did not stay isolated');
+      }
+
+      setResult(true, JSON.stringify({
+        selectorNames,
+        migratedAlice: aliceEvent.targetContactId,
+        generatedAliceCount: generatedAliceEvents.length,
+        isolatedThoughtKinds: aliceSchedules.map((entry) => entry.kind).sort(),
+        worldbookAssoc: (await contactsDb.contacts.get(aliceId)).worldbookAssoc,
+        bobId
+      }, null, 2));
+    } catch (error) {
+      setResult(false, error && error.stack ? error.stack : String(error));
+    }
+  });
+</script>
+</body>
+</html>

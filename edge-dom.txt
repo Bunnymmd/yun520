@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Open Latency Smoke</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Segoe UI", "PingFang SC", sans-serif;
+      background: #f7f3f5;
+      color: #222;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: #666;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    #result {
+      padding: 16px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      white-space: pre-wrap;
+      font: 12px/1.6 Consolas, "SFMono-Regular", monospace;
+    }
+
+    iframe {
+      width: 430px;
+      height: 932px;
+      border: 0;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>App Open Latency Smoke</h1>
+  <p id="status">Running...</p>
+  <pre id="result" data-status="running"></pre>
+  <iframe id="app-frame" src="/"></iframe>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    const statusEl = document.getElementById('status');
+    const appFrame = document.getElementById('app-frame');
+
+    function setResult(status, payload) {
+      resultEl.dataset.status = status;
+      resultEl.textContent = typeof payload === 'string'
+        ? payload
+        : JSON.stringify(payload, null, 2);
+      statusEl.textContent = status === 'pass' ? 'Completed.' : status === 'fail' ? 'Failed.' : 'Running...';
+    }
+
+    function waitFor(check, timeout = 20000, step = 16) {
+      const start = performance.now();
+      return new Promise((resolve, reject) => {
+        function tick() {
+          try {
+            const value = check();
+            if (value) {
+              resolve(value);
+              return;
+            }
+          } catch (error) {}
+
+          if (performance.now() - start >= timeout) {
+            reject(new Error('Timed out waiting for condition.'));
+            return;
+          }
+          window.setTimeout(tick, step);
+        }
+
+        tick();
+      });
+    }
+
+    async function waitForDesktopContext(rootWin) {
+      const desktopIframe = await waitFor(() => {
+        const node = rootWin.document.querySelector('iframe[data-route="desktop"][data-loaded="1"]');
+        return node || null;
+      });
+      await waitFor(() => desktopIframe.contentWindow && desktopIframe.contentWindow.document);
+      return desktopIframe.contentWindow;
+    }
+
+    async function openAndMeasure(rootWin, selector, route) {
+      rootWin.__miniShell.home();
+      await waitFor(() => rootWin.document.querySelector('iframe[data-route="desktop"].active[data-loaded="1"]'));
+      const desktopWin = await waitForDesktopContext(rootWin);
+      const desktopDoc = desktopWin.document;
+      const trigger = await waitFor(() => desktopDoc.querySelector(selector));
+
+      const firstStart = rootWin.performance.now();
+      trigger.click();
+      await waitFor(() => rootWin.document.querySelector(`iframe[data-route="${route}"].active[data-loaded="1"]`));
+      const firstOpenMs = Math.round((rootWin.performance.now() - firstStart) * 100) / 100;
+
+      rootWin.__miniShell.home();
+      await waitFor(() => rootWin.document.querySelector('iframe[data-route="desktop"].active[data-loaded="1"]'));
+      const secondTrigger = await waitFor(() => desktopDoc.querySelector(selector));
+
+      const secondStart = rootWin.performance.now();
+      secondTrigger.click();
+      await waitFor(() => rootWin.document.querySelector(`iframe[data-route="${route}"].active[data-loaded="1"]`));
+      const secondOpenMs = Math.round((rootWin.performance.now() - secondStart) * 100) / 100;
+
+      return { route, firstOpenMs, secondOpenMs };
+    }
+
+    window.addEventListener('load', async () => {
+      try {
+        const rootWin = await waitFor(() => appFrame.contentWindow && appFrame.contentWindow.__miniShell ? appFrame.contentWindow : null);
+        await waitForDesktopContext(rootWin);
+
+        const metrics = [];
+        metrics.push(await openAndMeasure(rootWin, '.p1-wechat', 'wechat'));
+        metrics.push(await openAndMeasure(rootWin, '.p2-contact', 'contacts'));
+        metrics.push(await openAndMeasure(rootWin, '.p1-anni', 'anniversary'));
+        metrics.push(await openAndMeasure(rootWin, '.dock-theme', 'theme'));
+        metrics.push(await openAndMeasure(rootWin, '.dock-settings', 'settings'));
+
+        setResult('pass', metrics);
+      } catch (error) {
+        setResult('fail', {
+          message: error && error.message ? error.message : String(error),
+          stack: error && error.stack ? error.stack : ''
+        });
+      }
+    });
+  </script>
+
+
+</body></html>
